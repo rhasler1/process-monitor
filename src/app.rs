@@ -1,2 +1,3 @@
 pub mod application;
-pub mod event;
+pub mod events;
+pub mod models;

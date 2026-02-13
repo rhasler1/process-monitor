@@ -1,6 +1,6 @@
-use rust_tui_template::app::application::App;
-use rust_tui_template::app::event::{AppEvent, AppEvents};
-use rust_tui_template::adapters::crossterm::input::*;
+use process_monitor::app::application::App;
+use process_monitor::app::events::event::{AppEvent, AppEvents};
+use process_monitor::adapters::crossterm::input::*;
 
 fn main() -> anyhow::Result<()> {
     // Terminal setup
