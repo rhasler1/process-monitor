@@ -1,6 +1,5 @@
-pub mod process_data_model;
-// Implement in adapters/sysinfo/
-use crate::app::models::process_data_model::ProcessItem;
-pub trait ProcessDataModelSource {
-    fn fetch_model(&self) -> Vec<ProcessItem>;
+pub mod process_model;
+use crate::app::models::process_model::ProcessTable;
+pub trait ProcessTableSource {
+    fn build_table(&self) -> ProcessTable;
 }

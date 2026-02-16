@@ -1,11 +1,12 @@
-use crate::app::models::process_data_model::ProcessItem;
-use crate::app::models::ProcessDataModelSource;
+use crate::app::models::process_model::{ProcessRow,ProcessTable};
+use crate::app::models::ProcessTableSource;
 
-pub struct SysinfoDataSource {
+/// Wraps sysinfo::System
+pub struct SystemDataSource {
     system: sysinfo::System
 }
 
-impl SysinfoDataSource {
+impl SystemDataSource {
     pub fn default() -> Self {
         Self {
             system: sysinfo::System::new_all()
@@ -17,42 +18,32 @@ impl SysinfoDataSource {
         self.system.refresh_all();
     }
 }
-
-impl ProcessDataModelSource for SysinfoDataSource {
-    fn fetch_model(&self) -> Vec<ProcessItem> {
+// TODO 2/15/2026 [16:36]
+impl ProcessTableSource for SystemDataSource {
+    /// Builds a ProcessTable using sysinfo API calls
+    fn build_table(&self) -> ProcessTable {
         let len = self.system.processes().len();
-        let mut processes: Vec<ProcessItem> = Vec::with_capacity(len);
+        let mut processes: Vec<ProcessRow> = Vec::with_capacity(len);
 
         for (pid, process) in self.system.processes() {
-            let name = if let Some(name) = process.name().to_str() {
-                String::from(name)
-            } else {
-                String::from("Name Not found")
-            };
-            let cpu_usage = if let Some(core_count) = sysinfo::System::physical_core_count() {
+            let name = process.name().to_os_string();
+            // sysinfo cpu_usage returns total usage over all cores; dividing by core_count to get
+            // an avg usage over all cores
+            let cpu_avg_core_usage = if let Some(core_count) = sysinfo::System::physical_core_count() {
                 process.cpu_usage() / core_count as f32
             } else {
                 process.cpu_usage()
             };
             let memory_usage = process.memory();
-            let path = if let Some(path) = process.exe() {
-                if let Some(path) = path.to_str() {
-                    path.to_string()
-                } else {
-                    String::from("Path non-valid unicode")
-                }
-            } else {
-                String::from("Path permission denied")
-            };
-            let process_item = ProcessItem::new(
+            let process_row = ProcessRow::new(
                 pid.as_u32(),
                 name,
-                cpu_usage,
-                memory_usage,
-                path
+                cpu_avg_core_usage,
+                memory_usage
                 );
-            processes.push(process_item);
+            processes.push(process_row);
         }
-        return processes;
+
+        ProcessTable::new(processes)
     }
 }
