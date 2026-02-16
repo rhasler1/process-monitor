@@ -1,5 +1,2 @@
-pub mod process_model;
-use crate::app::models::process_model::ProcessTable;
-pub trait ProcessTableSource {
-    fn build_table(&self) -> ProcessTable;
-}
+// Place common models in models/
+// pub mod fixed_byte_array; // Not in use

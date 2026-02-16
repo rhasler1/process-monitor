@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
     terminal.clear()?;
 
     // Create App
-    let mut app = App::default();
+    let mut app = App::init();
 
     // Create AppEvents MPSC channel
     let app_events = AppEvents::default();
@@ -30,19 +30,21 @@ fn main() -> anyhow::Result<()> {
                     println!("error: {}", err.to_string());
                 }
             }
+
         })?;
 
         // Get next AppEvent and match
         match app_events.next()? {
             AppEvent::KeyInputEvent(key) => {
-                if key == KeyInput::Char('q') {
+                if !app.key_event(key).is_consumed() && key == KeyInput::Char('q') {
                     break;
                 }
             }
             AppEvent::MouseInputEvent(mouse) => {
-                if mouse.kind == MouseInputKind::LeftClick {
-                    break;
-                }
+                let _ = app.mouse_event(mouse);
+            }
+            AppEvent::Refresh => {
+                app.refresh_event();
             }
             AppEvent::Tick => continue
         }

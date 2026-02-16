@@ -3,27 +3,65 @@ use ratatui::prelude::{Frame,Layout,Direction,Constraint,Alignment,Style,Span,Co
 use ratatui::widgets::Paragraph;
 // Internal application adapters
 use crate::adapters::sysinfo::sysinfo_datasource::SystemDataSource;
+use crate::adapters::crossterm::input::{KeyInput,MouseInputKind,MouseInput};
 // Internal application components
-use crate::app::components::process::ProcessComponent;
-use crate::app::components::DrawableComponent;
+use crate::app::components::process_component::process::ProcessComponent;
+// Internal application component traits
+use crate::app::components::{Component,DrawableComponent};
+// Internal application common types
+use crate::app::EventState;
+
+/// This enumerator describes all of the components that can be in focus
+enum AppFocus {
+    ProcessComponent
+}
 
 pub struct App {
-    message: String,
-    data_source: SystemDataSource,
+    data_source:       SystemDataSource,
+    focus:             AppFocus,
     process_component: ProcessComponent
 }
 
 impl App {
-    pub fn default() -> Self {
-        let message: String = String::from("Hello, press 'q' or left click to exit.");
+    pub fn init() -> Self {
         let mut data_source: SystemDataSource = SystemDataSource::default();
         data_source.refresh_all();
         let process_component: ProcessComponent = ProcessComponent::new(&data_source);
+        let focus: AppFocus = AppFocus::ProcessComponent;
         Self {
-            message,
             data_source,
+            focus,
             process_component
         }
+    }
+
+    pub fn key_event(&mut self, key: KeyInput) -> EventState {
+        match self.focus {
+            AppFocus::ProcessComponent => {
+                if self.process_component.key_event(key).is_consumed() {
+                    return EventState::Consumed
+                }
+            }
+        }
+        if self.move_focus(key).is_consumed() {
+            return EventState::Consumed
+        }
+        EventState::NotConsumed
+    }
+
+    fn move_focus(&mut self, key: KeyInput) -> EventState {
+        if key == KeyInput::Tab { /*TODO*/ }
+        return EventState::NotConsumed
+    }
+
+    pub fn mouse_event(&mut self, mouse: MouseInput) -> EventState {
+        // TODO 2/15/2026
+        EventState::NotConsumed
+    }
+
+    pub fn refresh_event(&mut self) {
+        self.data_source.refresh_all();
+        self.process_component.refresh_event(&self.data_source)
     }
 
     pub fn draw(&mut self, frame: &mut Frame) -> anyhow::Result<()> {
@@ -31,14 +69,9 @@ impl App {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Min(1),
-                Constraint::Percentage(80)
             ])
             .split(frame.size());
-        
-        let span = Span::styled(self.message.clone(), Style::new().fg(Color::Green));
-        let paragraph = Paragraph::new(span).alignment(Alignment::Center);
-        frame.render_widget(paragraph, chunks[0]);
-        self.process_component.draw(frame, chunks[1], true);
+        self.process_component.draw(frame, chunks[0], true);
 
         Ok(())
     }

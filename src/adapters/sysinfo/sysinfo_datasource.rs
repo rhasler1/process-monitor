@@ -1,5 +1,7 @@
-use crate::app::models::process_model::{ProcessRow,ProcessTable};
-use crate::app::models::ProcessTableSource;
+// Process model
+use crate::app::components::process_component::process_model::{ProcessRow,ProcessTable};
+// Trait to build model
+use crate::app::components::process_component::ProcessTableSource;
 
 /// Wraps sysinfo::System
 pub struct SystemDataSource {
@@ -18,7 +20,7 @@ impl SystemDataSource {
         self.system.refresh_all();
     }
 }
-// TODO 2/15/2026 [16:36]
+
 impl ProcessTableSource for SystemDataSource {
     /// Builds a ProcessTable using sysinfo API calls
     fn build_table(&self) -> ProcessTable {

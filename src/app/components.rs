@@ -1,21 +1,16 @@
-pub mod process;
+pub mod process_component;
 
 pub trait DrawableComponent {
-    fn draw(
-        &mut self,
-        f: &mut ratatui::prelude::Frame, 
-        area: ratatui::prelude::Rect, 
+    fn draw(&mut self,
+        frame:   &mut ratatui::prelude::Frame, 
+        area:    ratatui::prelude::Rect, 
         focused: bool) -> anyhow::Result<()>;
 }
 
+// Internal application imports 
+use crate::adapters::crossterm::input::{KeyInput,MouseInput};
+use crate::app::EventState;
 pub trait Component {
-    fn key_event(
-        &mut self, 
-        key: crate::adapters::crossterm::input::KeyInput,
-    ) -> anyhow::Result<crate::app::EventState>;
-
-    fn mouse_event(
-        &mut self, 
-        mouse: crate::adapters::crossterm::input::MouseInput,
-    ) -> anyhow::Result<crate::app::EventState>;
+    fn key_event(&mut self, key: KeyInput) -> EventState;
+    fn mouse_event(&mut self, mouse: MouseInput) -> EventState;
 }

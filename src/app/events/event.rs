@@ -6,6 +6,7 @@ use crate::adapters::crossterm::input::*;
 pub enum AppEvent {
     KeyInputEvent(KeyInput),
     MouseInputEvent(MouseInput),
+    Refresh,
     Tick
 }
 
@@ -13,7 +14,8 @@ pub struct AppEvents {
     rx: std::sync::mpsc::Receiver<AppEvent>,
     _tx: std::sync::mpsc::SyncSender<AppEvent>
 }
-
+// TODO 2/15/2026 - Hardcode refresh events (AppEvent::Refresh)
+// to occurr every 2s. This will later be controlled by a config file.
 impl AppEvents {
     pub fn default() -> Self {
         const TICK_RATE: std::time::Duration = std::time::Duration::from_millis(256);

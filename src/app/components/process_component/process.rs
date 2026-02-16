@@ -1,70 +1,14 @@
 // Process model
-use crate::app::models::process_model::{ProcessRow,ProcessTable};
+use crate::app::components::process_component::process_model::{ProcessRow,ProcessTable};
 // Model trait
-use crate::app::models::ProcessTableSource;
+use crate::app::components::process_component::ProcessTableSource;
+// Process state import
+use crate::app::components::process_component::process_state::ProcessTableState;
 // Component trait
-use crate::app::components::DrawableComponent;
-
-/// An enumerator describing tabular move directions
-pub enum MoveDirection {
-    Down,
-    Up,
-    Left,
-    Right
-}
-
-/// Encapsulates process table state
-struct ProcessTableState {
-    select_row: Option<usize>
-}
-
-impl ProcessTableState {
-    /// Creates a ProcessTableState with the provided ProcessTable
-    pub fn new(table: &ProcessTable) -> Self {
-        let select_row = if table.count_rows() > 0 {
-            Some(0)
-        } else {
-            None
-        };
-        Self {
-            select_row
-        }
-    }
-
-    pub fn move_selection(&mut self, dir: MoveDirection, max_idx: usize) {
-        if self.select_row.is_none() {
-            return
-        }
-        match dir {
-            MoveDirection::Down  => {
-                self.select_row = Some(move_selection_down(self.select_row.unwrap(), max_idx));
-            }
-            MoveDirection::Up    => {
-                self.select_row = Some(move_selection_up(self.select_row.unwrap()));
-            }
-            MoveDirection::Left  => {}
-            MoveDirection::Right => {}
-        }
-    }
-
-    /*TODO
-    pub fn view(&self, model: &ProcessDataModel) -> Vec<usize> {
-        let v = model.len();
-    }
-    */
-}
-
-const fn move_selection_down(selection_idx: usize, max_idx: usize) -> usize {
-    let mut new_selection_idx = selection_idx;
-    if selection_idx < max_idx {
-        new_selection_idx = selection_idx + 1;
-    }
-    new_selection_idx
-}
-
-const fn move_selection_up(selection_idx: usize) -> usize {
-    selection_idx.saturating_sub(1)
-}
+use crate::app::components::{Component,DrawableComponent};
+use crate::app::EventState;
+// Adapter imports
+use crate::adapters::crossterm::input::{KeyInput,MouseInputKind,MouseInput};
 
 pub struct ProcessComponent {
     table:       ProcessTable,
@@ -81,6 +25,22 @@ impl ProcessComponent {
             table_state
         }
     }
+
+    pub fn refresh_event<T>(&mut self, table_source: &T) where T: ProcessTableSource {
+        self.replace_table(table_source);
+    }
+
+    //TODO
+    fn replace_table<T>(&mut self, table_source: &T) where T: ProcessTableSource {
+        let new_table = table_source.build_table();
+        self.table_state.enforce_select_row_invariant(&new_table);
+        self.table = new_table;
+    }
+}
+
+impl Component for ProcessComponent {
+    fn key_event(&mut self, key: KeyInput) -> EventState {/*TODO*/ EventState::NotConsumed}
+    fn mouse_event(&mut self, mouse: MouseInput) -> EventState {/*TODO*/ EventState::NotConsumed}
 }
 
 use ratatui::prelude::{Frame,Rect,Layout,Direction,Constraint};

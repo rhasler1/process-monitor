@@ -7,7 +7,7 @@ use crossterm::event::{
     MouseButton
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone,Copy,PartialEq,Eq)]
 pub enum KeyInput {
     Enter,
     Esc,
@@ -38,7 +38,7 @@ impl From<KeyEvent> for KeyInput {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone,Copy,PartialEq,Eq)]
 pub enum MouseInputKind {
     LeftClick,
     ScrollUp,
@@ -46,6 +46,7 @@ pub enum MouseInputKind {
     Unknown
 }
 
+#[derive(Clone,Copy)]
 pub struct MouseInput {
     pub kind: MouseInputKind,
     pub column: u16,
