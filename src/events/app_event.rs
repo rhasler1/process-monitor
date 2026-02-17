@@ -18,8 +18,8 @@ pub enum AppEvent {
 pub struct AppEvents {
     rx:  Receiver<AppEvent>,
     _tx: SyncSender<AppEvent>
-
 }
+
 impl AppEvents {
     pub const TICK_RATE:    Duration = Duration::from_millis(256);  // ~0.25s
     pub const REFRESH_RATE: Duration = Duration::from_millis(2048); // ~2s
@@ -31,14 +31,16 @@ impl AppEvents {
 
         // https://doc.rust-lang.org/std/time/struct.Instant.html
         let mut last = Instant::now();
-        // move || means capture anything used inside the closure by value
+        // `move` || means capture anything used inside the closure by value
         std::thread::spawn(move || {
             loop {
                 // Refresh rate time delta check
                 let now = Instant::now();
                 if now.duration_since(last) >= Self::REFRESH_RATE {
                     last = now;
+                    // 'send' will only error if the receiving end of the channel has been disconnected
                     if event_tx.send(AppEvent::Refresh).is_err() {
+                        // return terminates the thread
                         return;
                     } // Crossterm key | mouse event check
                 } else if let Ok(true) = crossterm::event::poll(Self::TICK_RATE) {
@@ -46,21 +48,18 @@ impl AppEvents {
                         if let crossterm::event::Event::Key(key) = event {
                             // Check needed for Windows
                             if key.kind == crossterm::event::KeyEventKind::Press {
-                                // 'send' will only error if the receiving end of the channel has been disconnected
                                 if event_tx.send(AppEvent::KeyInputEvent(KeyInput::from(key))).is_err() {
                                     return;
                                 }
                             }
                         }
                         if let crossterm::event::Event::Mouse(mouse) = event {
-                            // 'send' will only error if the receiving end of the channel has been disconnected
                             if event_tx.send(AppEvent::MouseInputEvent(MouseInput::from(mouse))).is_err() {
                                 return;
                             }
                         }
                     } // No refresh & no key | mouse event then send tick event
                 } else {
-                    // 'send' will only error if the receiving end of the channel has been disconnected
                     if event_tx.send(AppEvent::Tick).is_err() {
                         return; 
                     }
