@@ -1,5 +1,5 @@
-use process_monitor::app::application::App;
-use process_monitor::app::events::event::{AppEvent, AppEvents};
+use process_monitor::app::App;
+use process_monitor::events::event::{AppEvent, AppEvents};
 use process_monitor::adapters::crossterm::input::*;
 
 fn main() -> anyhow::Result<()> {
