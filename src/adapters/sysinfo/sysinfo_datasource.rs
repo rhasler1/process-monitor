@@ -1,5 +1,7 @@
 // Import internal application process representation
 use crate::core::process::primitive::ProcessItem;
+use crate::core::process::model::ProcessSnapShot;
+use crate::core::process::ProcessSnapShotSource;
 
 /// Adapter for internal application to communicate with sysinfo API
 pub struct SysinfoDataSource {
@@ -20,14 +22,14 @@ impl SysinfoDataSource {
         self.system.refresh_all();
     }
 }
-//TODO
-impl ProcessSource for SysinfoDataSource {
+
+impl ProcessSnapShotSource for SysinfoDataSource {
     /// Gets system process information via sysinfo::System
     /// Formats system process information to internal application
     ///
-    fn fetch_processes(&self) -> Vec<Process> {
+    fn fetch_process_snapshot(&self) -> ProcessSnapShot {
         let len = self.system.processes().len();
-        let mut processes: Vec<Process> = Vec::with_capacity(len);
+        let mut processes: Vec<ProcessItem> = Vec::with_capacity(len);
 
         for (pid, process) in self.system.processes() {
             // Get ownership of [name](sysinfo::process:name)
@@ -49,6 +51,7 @@ impl ProcessSource for SysinfoDataSource {
             processes.push(process_row);
         }
 
-        ProcessTable::new(processes)
+        let ts = chrono::Local::now().timestamp();
+        ProcessSnapShot::new(processes, ts)
     }
 }
