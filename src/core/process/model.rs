@@ -8,6 +8,7 @@ use crate::core::common::bounded_queue::BoundedQueue;
 /// the same time. The timestamp when sampling occurred is stored in
 /// [ts](ProcessSnapShot::ts)
 /// [ts] Set ts by chrono::Local::now().timestamp();
+#[derive(Default)]
 pub struct ProcessSnapShot {
     data: Vec<ProcessItem>,
     //Returns the number of non-leap seconds since January 1, 1970 0:00:00 UTC (aka “UNIX timestamp”).

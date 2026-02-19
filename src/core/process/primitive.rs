@@ -3,6 +3,7 @@ use std::ffi::{OsString, OsStr};
 use std::borrow::Cow;
 
 /// Represents a single system process
+#[derive(Default)]
 pub struct ProcessItem {
     /// [pid](ProcessItem::pid) is a unique process identifier
     pid:       u32,

@@ -77,6 +77,16 @@ impl SysinfoWorker {
     pub fn try_next(&self) -> anyhow::Result<WorkerMessage, mpsc::TryRecvError> {
         self.rx.try_recv()
     }
+
+    pub fn next(&self) -> anyhow::Result<WorkerMessage, mpsc::RecvError> {
+        self.rx.recv()
+    }
+
+    /// `send` is blocking
+    /// Returns Error if the receiver is disconnected
+    pub fn send(&self, msg: CallerMessage) -> anyhow::Result<(), mpsc::SendError<CallerMessage>> {
+        self.tx.send(msg)
+    }
 }
 
 #[cfg(test)]
