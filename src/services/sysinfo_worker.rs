@@ -6,13 +6,12 @@ use crate::adapters::sysinfo::sysinfo_datasource::SysinfoDataSource;
 /// `Messages` from main thread to worker thread
 pub enum CallerMessage {
     BuildProcessSnapShot,
-    //Terminate // TODO 2/17/2026 - When implementing terminate
 }
 
 /// `Messages` from worker thread to main thread
 pub enum WorkerMessage {
     Done(ProcessSnapShot),
-    //Err(String) // 2/18/2026 - SysinfoDataSource cannot return an err
+    Error(mpsc::RecvError)
 }
 
 /// This structure is for `main` event loop
@@ -23,17 +22,16 @@ pub struct SysinfoWorker {
 
 impl SysinfoWorker {
     pub fn default() -> Self {
-        /// TODO 2/18/2026 Revise this documentation -
-        /// Rendezvous channel -  send will not return until a recv is paried with it.
+        /// 2/18/2026
+        /// Two rendezvous channel's (0 buffer size) are created: `tx.send` is blocking and will not return until a recv is paried with it.
         /// 
-        /// Why this works for sysinfoworker:
-        /// The Worker only has one task if the caller is not ready to receive than
-        /// worker blocking is OK.
+        /// Why this works for SysinfoWorker:
+        /// - The Worker only has one task if the caller is not ready to receive than worker blocking is OK (it has no other work todo).
         ///
-        /// The Caller sends messages on RefreshEvents; the duration
-        /// between RefreshEvents is much greater than the Duration the worker thread spends
-        /// processing a message and completing it's `work`--meaning the Caller should never
-        /// block on send.
+        /// - The `caller` sends the `worker` messages on RefreshEvents; the duration between RefreshEvents
+        /// is much greater than the Duration the worker thread spends processing a message and completing it's `work`
+        /// --meaning the Caller should never block on send. There is a `tx.try_send()` function
+        /// that is a non-blocking send--this is something that can be experimented with.
         const CHANNEL_SIZE: usize = 0;
         /// This channel is used for communication from `main` thread to `worker` thread
         let (to_caller_tx, from_worker_rx) = mpsc::sync_channel(CHANNEL_SIZE);
@@ -44,35 +42,33 @@ impl SysinfoWorker {
 
         std::thread::spawn(move || {
             loop {
-                // poll message from caller
-                // `recv()` function will always block the current thread if there is no data available and it’s possible for more data to be sent (at least one sender still exists)
+                /// `recv()` function will always block the current thread if there is no data available
+                /// and it’s possible for more data to be sent (at least one sender still exists).
+                /// This is intended, the worker should wait here for more work.
                 let message = from_caller_rx.recv();
                 match message {
                     Ok(CallerMessage::BuildProcessSnapShot) => {
+                        /// Refresh data source & build new domain models
                         data_source.refresh_all();
                         let snapshot = data_source.fetch_process_snapshot();
-                        // `send` will only error if the receiving end of the channel
-                        // has been disconnected
+                        /// `send` returns error if the channel is disconnected; thread is
+                        /// terminated in this case
                         if to_caller_tx.send(WorkerMessage::Done(snapshot)).is_err() {
-                            // return terminates the thread
                             return;
                         }
-                    } // Err here only occurs if the channel has hung up
-                    Err(_) => {
-                        // TODO 2/18/2026 - terminate thread; there might be a better option.
-                        // This occurs when to_worker_tx,from_caller_rx channel has hung up, to
-                        // caller_tx, from_worker_rx channel might still be operational; in this
-                        // case a return message could be sent
-                        // What can problem be done is to try and send a message to the caller
-                        // that the channel communication from caller -> Recv has hung up,
-                        // if this send fails, then terminate the thread
-                        return;
+                    } // `RecvError` occurs if the channel has hung up
+                    Err(mpsc::RecvError) => {
+                        /// If `caller` => `worker` mpsc channel is disconnected; attempt to notify
+                        /// caller via `worker` => `caller` mpsc channel. The worker thread is terminated if
+                        /// the `notification` fails.
+                        if to_caller_tx.send(WorkerMessage::Error(mpsc::RecvError)).is_err() {
+                            return;
+                        }
                     }
                 }
             }
         });
-
-        // Return channel ends used by caller
+        /// Return channel ends used by caller
         SysinfoWorker {rx: from_worker_rx, tx: to_worker_tx}
     }
 
@@ -94,7 +90,7 @@ pub mod test {
     #[test]
     fn test_sysinfo_worker() {
         let worker = SysinfoWorker::default();
-        worker.tx.send(CallerMessage::BuildProcessSnapShot);
+        let _ = worker.tx.send(CallerMessage::BuildProcessSnapShot);
         /// INFO 2/18/2026 - experiment with `give_worker_time` to get an idea of how
         /// long it takes for the worker to complete it's task. Err(...Empty) will 
         /// execute if worker did not complete it's task in the time alotted.
@@ -106,14 +102,18 @@ pub mod test {
             Ok(WorkerMessage::Done(snapshot)) => {
                 assert!(snapshot.count() > 0);
             }
+            // Caller to worker channel closed
+            Ok(WorkerMessage::Error(mpsc::RecvError)) => {
+                assert!(false);
+            }
+            // Worker has no work completed
             Err(mpsc::TryRecvError::Empty) => {
                 assert!(false);
             }
+            // Worker to caller channel closed
             Err(mpsc::TryRecvError::Disconnected) => {
                 assert!(false)
             }
         }
     }
 }
-// SIGNOFF 2/18/2026 - initial implementation & testing of sysinfo worker is
-// almost complete. Check TODO
