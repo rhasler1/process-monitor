@@ -1,3 +1,5 @@
+# TODO: This is no longer core but rather domain/
+
 # Core
 Contains core data types and data structures essential to monitoring system information
 - Core data types are defined in `primitive` modules
@@ -11,7 +13,7 @@ Contains core data types and data structures essential to monitoring system info
     - E.g., the two previous examples
 - The sub-module `common` is reserved for `primitives` and `models` that
 are common among many sub-modules
-    - E.g., core::common::bounded_queue::BoundedQueue\<T>
+    - E.g., core::common::bounded\_queue::BoundedQueue\<T>
 
 TODO:
 1. (completed) First implementation of core process models

@@ -1,8 +1,9 @@
+// Internal project imports
 use process_monitor::app::App;
 use process_monitor::events::app_event::{AppEvent, AppEvents};
-use process_monitor::adapters::crossterm::input::*;
+use process_monitor::adapters::crossterm::input::{Key};
 use process_monitor::services::sysinfo_worker::{SysinfoWorker,CallerMessage,WorkerMessage};
-
+// std library import
 use std::sync::mpsc;
 
 fn main() -> anyhow::Result<()> {
@@ -32,7 +33,7 @@ fn main() -> anyhow::Result<()> {
     // Using blocking next to wait for first domain model to be built before entering event loop
     match sysinfo_worker.next()? {
         WorkerMessage::Done(process_snapshot) => {
-            app.update(process_snapshot);
+            app.model_update(process_snapshot);
         } // mpsc channel channel `worker` => `caller` disconnected; exit program
         _ => {
             tear_down();
@@ -45,7 +46,7 @@ fn main() -> anyhow::Result<()> {
         match sysinfo_worker.try_next() {
             Ok(WorkerMessage::Done(process_snapshot)) => {
                 // update state
-                app.update(process_snapshot);
+                app.model_update(process_snapshot);
             }
             Ok(WorkerMessage::Error(recv_error)) => {
                 break;
@@ -66,15 +67,12 @@ fn main() -> anyhow::Result<()> {
         })?;
         // Match next AppEvent
         match app_events.next()? {
-            AppEvent::KeyInputEvent(key) => {
-                if !app.key_event(key).is_consumed() && key == KeyInput::Char('q') {
+            AppEvent::Key(key) => {
+                if !app.key_event(key).is_consumed() && key == Key::Char('q') {
                     break;
                 }
             }
-            AppEvent::MouseInputEvent(mouse) => {
-                //let _ = app.mouse_event(mouse);
-            }
-            AppEvent::Refresh => {
+            AppEvent::RebuildDomain => {
                 // Send `build` message to worker
                 if sysinfo_worker.send(CallerMessage::BuildProcessSnapShot).is_err() {
                     break;

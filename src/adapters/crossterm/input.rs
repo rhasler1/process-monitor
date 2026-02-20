@@ -1,14 +1,11 @@
 // Crossterm event (adapt)=> application input
 use crossterm::event::{
     KeyEvent,
-    KeyCode,
-    MouseEvent,
-    MouseEventKind,
-    MouseButton
+    KeyCode
 };
 
 #[derive(Clone,Copy,PartialEq,Eq)]
-pub enum KeyInput {
+pub enum Key {
     Enter,
     Esc,
     Char(char),
@@ -21,51 +18,20 @@ pub enum KeyInput {
     Unknown
 }
 
-impl From<KeyEvent> for KeyInput {
+impl From<KeyEvent> for Key {
     fn from(event: KeyEvent) -> Self {
         match event.code {
-            KeyCode::Enter      => KeyInput::Enter,
-            KeyCode::Esc        => KeyInput::Esc,
-            KeyCode::Char(char) => KeyInput::Char(char),
-            KeyCode::Backspace  => KeyInput::Backspace,
-            KeyCode::Up         => KeyInput::Up,
-            KeyCode::Down       => KeyInput::Down,
-            KeyCode::Left       => KeyInput::Left,
-            KeyCode::Right      => KeyInput::Right,
-            KeyCode::Tab        => KeyInput::Tab,
-            _                   => KeyInput::Unknown
+            KeyCode::Enter      => Key::Enter,
+            KeyCode::Esc        => Key::Esc,
+            KeyCode::Char(char) => Key::Char(char),
+            KeyCode::Backspace  => Key::Backspace,
+            KeyCode::Up         => Key::Up,
+            KeyCode::Down       => Key::Down,
+            KeyCode::Left       => Key::Left,
+            KeyCode::Right      => Key::Right,
+            KeyCode::Tab        => Key::Tab,
+            _                   => Key::Unknown
         }
     }
 }
 
-#[derive(Clone,Copy,PartialEq,Eq)]
-pub enum MouseInputKind {
-    LeftClick,
-    ScrollUp,
-    ScrollDown,
-    Unknown
-}
-
-#[derive(Clone,Copy)]
-pub struct MouseInput {
-    pub kind: MouseInputKind,
-    pub column: u16,
-    pub row: u16
-}
-
-impl From<MouseEvent> for MouseInput {
-    fn from(event: MouseEvent) -> Self {
-        let kind = match event.kind {
-            MouseEventKind::Down(MouseButton::Left) => MouseInputKind::LeftClick,
-            MouseEventKind::ScrollUp   => MouseInputKind::ScrollUp,
-            MouseEventKind::ScrollDown => MouseInputKind::ScrollDown,
-            _ => MouseInputKind::Unknown
-        };
-
-        Self {
-            kind,
-            column: event.column,
-            row: event.row
-        }
-    }
-}

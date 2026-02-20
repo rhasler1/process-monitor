@@ -1,15 +1,14 @@
-/// Crossterm mouse and key events are adapted to corresponding AppEvent variants
-use crate::adapters::crossterm::input::*;
-/// Instant is used to track a time delta for sending Refresh events
+// Crossterm mouse and key events are adapted to corresponding AppEvent variants
+use crate::adapters::crossterm::input::{Key};
+// Instant is used to track a time delta for sending Refresh events
 use std::time::{Instant,Duration};
-/// MPSC channel
+// MPSC channel
 use std::sync::mpsc::{Receiver,SyncSender,sync_channel};
 
-/// Defines app event & it's variants
+/// Defines Key, RebuildDomain, and Tick events
 pub enum AppEvent {
-    KeyInputEvent(KeyInput),
-    MouseInputEvent(MouseInput),
-    Refresh,
+    Key(Key),
+    RebuildDomain,
     Tick
 }
 
@@ -22,7 +21,7 @@ pub struct AppEvents {
 
 impl AppEvents {
     pub const TICK_RATE:    Duration = Duration::from_millis(256);  // ~0.25s
-    pub const REFRESH_RATE: Duration = Duration::from_millis(2048); // ~2s
+    pub const REBUILD_RATE: Duration = Duration::from_millis(2048); // ~2s
     pub const CHANNEL_SIZE: usize = 16;
 
     pub fn default() -> Self {    
@@ -36,10 +35,10 @@ impl AppEvents {
             loop {
                 // Refresh rate time delta check
                 let now = Instant::now();
-                if now.duration_since(last) >= Self::REFRESH_RATE {
+                if now.duration_since(last) >= Self::REBUILD_RATE {
                     last = now;
                     // 'send' will only error if the receiving end of the channel has been disconnected
-                    if event_tx.send(AppEvent::Refresh).is_err() {
+                    if event_tx.send(AppEvent::RebuildDomain).is_err() {
                         // return terminates the thread
                         return;
                     } // Crossterm key | mouse event check
@@ -48,14 +47,9 @@ impl AppEvents {
                         if let crossterm::event::Event::Key(key) = event {
                             // Check needed for Windows
                             if key.kind == crossterm::event::KeyEventKind::Press {
-                                if event_tx.send(AppEvent::KeyInputEvent(KeyInput::from(key))).is_err() {
+                                if event_tx.send(AppEvent::Key(Key::from(key))).is_err() {
                                     return;
                                 }
-                            }
-                        }
-                        if let crossterm::event::Event::Mouse(mouse) = event {
-                            if event_tx.send(AppEvent::MouseInputEvent(MouseInput::from(mouse))).is_err() {
-                                return;
                             }
                         }
                     } // No refresh & no key | mouse event then send tick event
@@ -76,7 +70,6 @@ impl AppEvents {
 
 #[cfg(test)]
 mod test {
-    use crate::adapters::crossterm::input::*;
     use std::time::{Instant,Duration};
     use std::sync::mpsc::{Receiver,SyncSender,sync_channel};
     use super::{AppEvent,AppEvents};
@@ -91,10 +84,10 @@ mod test {
         let mut refresh_count = 0;
         loop {
             let _ = match app_events.next() {
-                Ok(AppEvent::Refresh) => {
+                Ok(AppEvent::RebuildDomain) => {
                     let now_refresh = Instant::now();
                     let delta_refresh = now_refresh.duration_since(last_refresh);
-                    assert!(delta_refresh >= AppEvents::REFRESH_RATE && delta_refresh <= AppEvents::REFRESH_RATE + AppEvents::TICK_RATE);
+                    assert!(delta_refresh >= AppEvents::REBUILD_RATE && delta_refresh <= AppEvents::REBUILD_RATE + AppEvents::TICK_RATE);
                     last_refresh = now_refresh;
                     refresh_count = refresh_count + 1;
                     if refresh_count >= refresh_iters {

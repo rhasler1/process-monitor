@@ -1,7 +1,7 @@
 // Import internal application process representation
-use crate::core::process::primitive::ProcessItem;
-use crate::core::process::model::ProcessSnapShot;
-use crate::core::process::ProcessSnapShotSource;
+use crate::domain::process::primitive::ProcessItem;
+use crate::domain::process::model::ProcessSnapShot;
+use crate::domain::process::ProcessSnapShotSource;
 
 /// Adapter for internal application to communicate with sysinfo API
 pub struct SysinfoDataSource {

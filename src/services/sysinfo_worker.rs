@@ -1,6 +1,6 @@
 use std::sync::mpsc;
-use crate::core::process::model::ProcessSnapShot;
-use crate::core::process::ProcessSnapShotSource;
+use crate::domain::process::model::ProcessSnapShot;
+use crate::domain::process::ProcessSnapShotSource;
 use crate::adapters::sysinfo::sysinfo_datasource::SysinfoDataSource;
 
 /// `Messages` from main thread to worker thread

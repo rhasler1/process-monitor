@@ -1,7 +1,9 @@
 // Import primitive
-use crate::core::process::primitive::ProcessItem;
+use crate::domain::process::primitive::ProcessItem;
 // Import used by `ProcessSnapShotHistory`
-use crate::core::common::bounded_queue::BoundedQueue;
+use crate::domain::common::bounded_queue::BoundedQueue;
+// DomainModel trait
+//use crate::domain::DomainModel;
 
 /// Stores one or more `ProcessItem` in [data](ProcessSnapShot::data)
 /// `ProcessItem's` stored in ProcessSnapShot are to be sampled at

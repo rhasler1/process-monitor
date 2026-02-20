@@ -4,47 +4,52 @@ use ratatui::widgets::{Cell,Row,Table};
 //
 use anyhow::Result;
 use crate::components::process_table::state::ProcessTableState;
-use crate::components::{Component,DrawableComponent};
-use crate::core::process::model::ProcessSnapShot;
-use crate::core::process::primitive::ProcessItem;
+use crate::components::process_table::controller::{ProcessTableAction,ProcessTableController};
+use crate::components::process_table::view::ProcessTableView;
+use crate::events::EventState;
+use crate::adapters::crossterm::input::Key;
+//use crate::components::{Component,DrawableComponent};
+use crate::domain::process::model::ProcessSnapShot;
+use crate::domain::process::primitive::ProcessItem;
 
-#[derive(Default)]
-pub struct ProcessTable {
-    state: ProcessTableState,
+/// Idea: model update => Reconstruct ProcessTableComponent
+/// Some state might want to be preserved
+pub struct ProcessTableComponent {
+    state:      ProcessTableState,
+    controller: ProcessTableController,
+    view:       ProcessTableView
 }
 
-impl ProcessTable {
-    pub fn update(&mut self, process_snapshot: &ProcessSnapShot) {
-        self.state.update(&process_snapshot);
+impl Default for ProcessTableComponent {
+    fn default() -> Self {
+        let state      = ProcessTableState::default();
+        let view       = ProcessTableView::default();
+        let controller = ProcessTableController::default();
+        Self { state, view, controller }
+    }
+}
+
+impl ProcessTableComponent {
+    pub fn handle_model_update(&mut self, process_snapshot: &ProcessSnapShot) {
+        self.state.handle_model_update(&process_snapshot);
     }
 
-    pub fn draw(&self,
-        process_snapshot: &ProcessSnapShot,
+    pub fn handle_key_event(&mut self, key: Key, process_snapshot: &ProcessSnapShot) -> EventState {
+        let action: Option<ProcessTableAction> = self.controller.handle_key_event(key);
+        if let Some(a) = action {
+            self.state.handle_action(a, &process_snapshot);
+            EventState::Consumed
+        } else {
+            EventState::NotConsumed
+        }
+    }
+
+    pub fn handle_draw(&self,
         frame: &mut Frame,
         area: Rect,
-        focused: bool) -> anyhow::Result<()>
-    {
-        let vertical_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Fill(1)    // Process table
-            ]).split(area);
-        let process_table_height = vertical_chunks[0].height;
-        let rows = process_snapshot.iter()
-            .skip(0)
-            .take(process_table_height.into())
-            .map(|process_item| {
-                let cells = vec![Cell::from(format!("{}",process_item.pid())),
-                Cell::from(format!("{}",process_item.name_to_string_lossy())),
-                Cell::from(format!("{}",process_item.cpu_usage())),
-                Cell::from(format!("{}",process_item.mem_usage()))
-                ];
-                Row::new(cells)
-            }).collect::<Vec<_>>();
-        let widths = [Constraint::Length(5),Constraint::Length(5),Constraint::Length(5),Constraint::Length(5)];
-        let table = Table::new(rows,widths);
-        frame.render_widget(table, vertical_chunks[0]);
-        Ok(())
+        focus: bool,
+        process_snapshot: &ProcessSnapShot) -> anyhow::Result<()> {
+        self.view.handle_draw(frame, area, focus, &process_snapshot, &self.state)
     }
-
 }
+
