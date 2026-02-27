@@ -1,16 +1,9 @@
-// import ratatui
-use ratatui::prelude::{Frame,Rect,Layout,Direction,Constraint};
-use ratatui::widgets::{Cell,Row,Table};
-//
-use anyhow::Result;
 use crate::components::process_table::state::ProcessTableState;
 use crate::components::process_table::controller::{ProcessTableAction,ProcessTableController};
 use crate::components::process_table::view::ProcessTableView;
 use crate::events::EventState;
 use crate::adapters::crossterm::input::Key;
-//use crate::components::{Component,DrawableComponent};
 use crate::domain::process::model::ProcessSnapShot;
-use crate::domain::process::primitive::ProcessItem;
 
 /// Idea: model update => Reconstruct ProcessTableComponent
 /// Some state might want to be preserved
@@ -29,6 +22,8 @@ impl Default for ProcessTableComponent {
     }
 }
 
+// import ratatui
+use ratatui::prelude::{Frame,Rect};
 impl ProcessTableComponent {
     pub fn handle_model_update(&mut self, process_snapshot: &ProcessSnapShot) {
         self.state.handle_model_update(&process_snapshot);
@@ -44,7 +39,7 @@ impl ProcessTableComponent {
         }
     }
 
-    pub fn handle_draw(&self,
+    pub fn handle_draw(&mut self,
         frame: &mut Frame,
         area: Rect,
         focus: bool,

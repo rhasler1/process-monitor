@@ -1,6 +1,10 @@
 use crate::domain::process::model::ProcessSnapShot;
 use crate::components::process_table::controller::ProcessTableAction;
-use crate::events::EventState;
+
+pub enum MoveDirection {
+    Down,
+    Up
+}
 
 /// ProcessTable sort options
 pub enum ProcessTableSort {
@@ -12,18 +16,10 @@ pub enum ProcessTableSort {
     CpuInc,
     MemDec,
     MemInc
-}
-
-impl Default for ProcessTableSort {
+} impl Default for ProcessTableSort {
     fn default() -> Self {
         ProcessTableSort::CpuDec
     }
-}
-
-/// Move directions supported by ProcessTable
-pub enum MoveDirection {
-    Down,
-    Up
 }
 
 /// Encapsulates process table state
@@ -59,7 +55,7 @@ impl ProcessTableState {
             ProcessTableAction::Move(dir) => {
                 self.move_selection(dir, &process_snapshot);
             }
-            ProcessTableAction::Sort(sort) => {}
+            ProcessTableAction::Sort(_sort) => {}
         }
     }
 
@@ -71,6 +67,10 @@ impl ProcessTableState {
             }
             self.enforce_select_row_invariant(&process_snapshot);
         } 
+    }
+
+    pub fn select_row(&self) -> Option<usize> {
+        self.select_row
     }
 }
 

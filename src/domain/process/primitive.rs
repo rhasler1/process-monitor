@@ -64,8 +64,7 @@ impl PartialEq for ProcessItem {
 #[cfg(test)]
 pub mod test {
     use super::ProcessItem;
-    use std::ffi::{OsString, OsStr};
-    use std::borrow::Cow;
+    use std::ffi::OsString;
     
     #[test]
     fn test_process_item_eq() {

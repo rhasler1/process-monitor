@@ -70,9 +70,8 @@ mod test {
         assert_eq!(v[1], 2);
     }
 
-    use crate::core::process::model::ProcessSnapShot;
-    use chrono::{DateTime, Local, Utc};
-    use crate::core::process::primitive::ProcessItem;
+    use crate::domain::process::model::ProcessSnapShot;
+    use crate::domain::process::primitive::ProcessItem;
     use std::ffi::OsString;
     #[test]
     fn test_bounded_queue_containing_snapshots() {

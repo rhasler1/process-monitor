@@ -1,3 +1,14 @@
+# 2/20/2026 
+- Signing off here; pick back up on components/
+- Implement sort & handle\_key() methods
+- Improve upon view
+- After the above are complete, I can look into generalizing UI Components.
+    - Enum Move is a good place to start
+    - General table implementation with row & col props?
+        - This will be much more involved
+    - Seperate table view logic from ratatui?
+        - E.g., internal app table gets "plugged into" ratatui?
+
 # Threads
 - Main thread synchronizes drawing `UI Components`, `AppEvents`, and the `SysinfoWorker` (see main.rs) 
 - `AppEvents` are on their own thread (see events/app\_event.rs) and communicates with the main thread via `mpsc channel`
@@ -16,6 +27,3 @@
       - `UIComponentState` enforces `DomainModel` invariant rules on state parameters
         - E.g., `UIProcessSelection` must be within the range of `DomainProcessModel`
     - `TickEvent`    => back to `1`.
-
-# TODO 2/19/2026 - This `plan` was written before the main event loop was implemented. The event
-loop is implemented now and README.md should be revised accordingly.

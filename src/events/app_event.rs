@@ -20,7 +20,7 @@ pub struct AppEvents {
 }
 
 impl AppEvents {
-    pub const TICK_RATE:    Duration = Duration::from_millis(256);  // ~0.25s
+    pub const TICK_RATE:    Duration = Duration::from_millis(248);  // ~0.25s
     pub const REBUILD_RATE: Duration = Duration::from_millis(2048); // ~2s
     pub const CHANNEL_SIZE: usize = 16;
 
@@ -70,8 +70,7 @@ impl AppEvents {
 
 #[cfg(test)]
 mod test {
-    use std::time::{Instant,Duration};
-    use std::sync::mpsc::{Receiver,SyncSender,sync_channel};
+    use std::time::Instant;
     use super::{AppEvent,AppEvents};
 
     /// Test checks refresh events occur between REFRESH_RATE and REFRESH_RATE + TICK_RATE

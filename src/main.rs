@@ -27,7 +27,7 @@ fn main() -> anyhow::Result<()> {
     // Send build message to worker
     if sysinfo_worker.send(CallerMessage::BuildProcessSnapShot).is_err() {
         // mpsc channel `caller` => `worker` disconnected; exit program
-        tear_down();
+        tear_down()?;
         std::process::exit(1);
     }
     // Using blocking next to wait for first domain model to be built before entering event loop
@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
             app.model_update(process_snapshot);
         } // mpsc channel channel `worker` => `caller` disconnected; exit program
         _ => {
-            tear_down();
+            tear_down()?;
             std::process::exit(1);
         }
     }
@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
                 // update state
                 app.model_update(process_snapshot);
             }
-            Ok(WorkerMessage::Error(recv_error)) => {
+            Ok(WorkerMessage::Error(_recv_error)) => {
                 break;
             } /* No new model; this is not an Error and is expected majority of checks*/
             Err(mpsc::TryRecvError::Empty) => {}
@@ -56,6 +56,9 @@ fn main() -> anyhow::Result<()> {
                 break;
             }
         }
+        // This in it self could be a fun project
+        // terminal.draw(|frame| ratatui_renderer.draw(frame, app.render()))?;
+        
         // Draw app
         terminal.draw(|frame| {
             match app.draw(frame) {
@@ -65,7 +68,8 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         })?;
-        // Match next AppEvent
+        // Match next AppEvent TODO [2/24/26] propogate errors found in `key_event` here and exit
+        // gracefully
         match app_events.next()? {
             AppEvent::Key(key) => {
                 if !app.key_event(key).is_consumed() && key == Key::Char('q') {

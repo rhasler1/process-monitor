@@ -8,6 +8,8 @@
 
 // Make component modules visible ouside parent
 pub mod process_table;
+pub mod text_line;
+pub mod utils;
 
 // Internal project imports
 use crate::adapters::crossterm::input::Key;

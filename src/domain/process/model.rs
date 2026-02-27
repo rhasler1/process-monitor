@@ -88,8 +88,8 @@ impl ProcessSnapShotHistory {
 #[cfg(test)]
 pub mod test {
     use super::ProcessSnapShot;
-    use chrono::{DateTime, Local, Utc};
-    use crate::core::process::primitive::ProcessItem;
+    //use chrono::{DateTime, Local, Utc};
+    use crate::domain::process::primitive::ProcessItem;
     use std::ffi::OsString;
 
     
@@ -99,12 +99,12 @@ pub mod test {
         let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
         let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
         
-        /// [ts] Set ts by chrono::Local::now().timestamp();
+        // [ts] Set ts by chrono::Local::now().timestamp();
         let ts = chrono::Local::now().timestamp();
         let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3], ts);
         assert_eq!(snap_shot.count(), 3);
         let iter = snap_shot.iter();
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
+        let _item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
         let pids: Vec<_> = iter.map(|item| {item.pid()}).collect();
         assert_eq!(pids[0],2);
         assert_eq!(pids[1],3);
@@ -118,7 +118,7 @@ pub mod test {
         let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
         let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
         
-        /// [ts] Set ts by chrono::Local::now().timestamp();
+        // [ts] Set ts by chrono::Local::now().timestamp();
         let ts = chrono::Local::now().timestamp();
         let snapshot1 = ProcessSnapShot::new(vec![item1,item2,item3], ts);
 
