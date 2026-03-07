@@ -13,7 +13,7 @@ use crate::domain::common::bounded_queue::BoundedQueue;
 #[derive(Default)]
 pub struct ProcessSnapShot {
     data: Vec<ProcessItem>,
-    //Returns the number of non-leap seconds since January 1, 1970 0:00:00 UTC (aka “UNIX timestamp”).
+    // Returns the number of non-leap seconds since January 1, 1970 0:00:00 UTC (aka “UNIX timestamp”).
     ts:   i64
 }
 

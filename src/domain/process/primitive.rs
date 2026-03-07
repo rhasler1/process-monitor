@@ -1,9 +1,16 @@
+/*
+TODO [3/2/26]
+- Disk usage
+- Runtime
+- Status
+*/
+
 // Following imports are used by [name](ProcessItem::name)
 use std::ffi::{OsString, OsStr};
 use std::borrow::Cow;
 
 /// Represents a single system process
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ProcessItem {
     /// [pid](ProcessItem::pid) is a unique process identifier
     pid:       u32,
