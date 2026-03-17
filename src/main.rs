@@ -1,8 +1,20 @@
+/*
+TODOS:
+1. [3/12/26] The ProcessComponent's TableModel should be able to save state between runs. For example, a column configuration should be savable.
+This means the app must attempt to read from a config file on start. Initial idea is to add a config.toml file. This also means that configurable
+component's model should have a constructor that accepts config.
+
+2. [3/12/26] Investigate what might of caused the Terminal to freeze that one occurrence when running app.
+    - I think it might of had something to do with the 0-size mpsc channels
+
+    
+    */
+
 // Internal project imports
 use process_monitor::app::App;
 use process_monitor::events::app_event::{AppEvent, AppEvents};
-use process_monitor::adapters::crossterm::input::{Key};
-use process_monitor::services::sysinfo_worker::{SysinfoWorker,CallerMessage,WorkerMessage};
+use process_monitor::adapters::crossterm::input::Key;
+use process_monitor::services::sysinfo_worker::{SysinfoWorker, CallerMessage, WorkerMessage};
 // std library import
 use std::sync::mpsc;
 

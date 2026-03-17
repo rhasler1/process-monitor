@@ -1,50 +1,45 @@
-use crate::components::process_table::state::ProcessTableState;
-use crate::components::process_table::controller::{ProcessTableAction,ProcessTableController};
-use crate::components::process_table::view::ProcessTableView;
+use crate::components::process_table::table::{TableModel, TableEvent};
+use crate::components::process_table::controller::TableController;
+use crate::domain::process::model::ProcessSnapShot;
 use crate::events::EventState;
 use crate::adapters::crossterm::input::Key;
-use crate::domain::process::model::ProcessSnapShot;
+use anyhow::Result;
+use crate::components::process_table::view::TableView;
 
-/// Idea: model update => Reconstruct ProcessTableComponent
-/// Some state might want to be preserved
-pub struct ProcessTableComponent {
-    state:      ProcessTableState,
-    controller: ProcessTableController,
-    view:       ProcessTableView
+// TODO [3/10/26] Rewrite view (w/scroll) 
+pub struct TableComponent {
+    model:      TableModel,
+    controller: TableController,
+    view:       TableView
 }
 
-impl Default for ProcessTableComponent {
-    fn default() -> Self {
-        let state      = ProcessTableState::default();
-        let view       = ProcessTableView::default();
-        let controller = ProcessTableController::default();
-        Self { state, view, controller }
+use ratatui::prelude::{Frame, Rect};
+impl TableComponent {
+    pub fn key_event(&mut self, key: Key) -> EventState {
+        let table_event: Option<TableEvent> = self.controller.key_event(key, &self.model);
+        if let Some(event) = table_event {
+            self.model.table_event(event);
+            return EventState::Consumed;
+        }
+        return EventState::NotConsumed;
+    }
+
+    pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) {
+        self.model.new_snapshot(snapshot);
+    }
+
+    pub fn draw(&mut self, frame: &mut Frame, area: Rect, focus: bool) -> Result<()> {
+        self.view.draw(frame, area, focus, &self.model);
+        Ok(())
     }
 }
 
-// import ratatui
-use ratatui::prelude::{Frame,Rect};
-impl ProcessTableComponent {
-    pub fn handle_model_update(&mut self, process_snapshot: &ProcessSnapShot) {
-        self.state.handle_model_update(&process_snapshot);
-    }
-
-    pub fn handle_key_event(&mut self, key: Key, process_snapshot: &ProcessSnapShot) -> EventState {
-        let action: Option<ProcessTableAction> = self.controller.handle_key_event(key);
-        if let Some(a) = action {
-            self.state.handle_action(a, &process_snapshot);
-            EventState::Consumed
-        } else {
-            EventState::NotConsumed
+impl From<&ProcessSnapShot> for TableComponent {
+    fn from(snapshot: &ProcessSnapShot) -> Self {
+        Self {
+            model:      TableModel::from(snapshot),
+            controller: TableController::default(),
+            view:       TableView::default()
         }
     }
-
-    pub fn handle_draw(&mut self,
-        frame: &mut Frame,
-        area: Rect,
-        focus: bool,
-        process_snapshot: &ProcessSnapShot) -> anyhow::Result<()> {
-        self.view.handle_draw(frame, area, focus, &process_snapshot, &self.state)
-    }
 }
-

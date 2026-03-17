@@ -1,11 +1,13 @@
 use crate::domain::process::primitive::ProcessItem;
 use crate::domain::process::model::ProcessSnapShot;
 
+#[derive(Clone, PartialEq)]
 pub enum Direction {
     Up,
     Down
 }
 
+#[derive(Clone, PartialEq)]
 pub enum RowOrder {
     PIDDec,
     PIDInc,
@@ -17,6 +19,13 @@ pub enum RowOrder {
     MemInc
 }
 
+#[derive(Clone, PartialEq)]
+pub enum RowsEvent {
+    MoveSelection(Direction),
+    Sort(RowOrder),
+    Filter(String),
+}
+
 pub struct Rows {
     rows:      Vec<Row>,
     filter:    Option<String>,
@@ -25,7 +34,45 @@ pub struct Rows {
 }
 
 impl Rows {
-    pub fn move_selection(&mut self, dir: Direction) {
+    pub fn row_event(&mut self, event: RowsEvent) {
+        match event {
+            RowsEvent::MoveSelection(Direction::Up) => {
+                self.move_selection(Direction::Up)
+            }
+            RowsEvent::MoveSelection(Direction::Down) => {
+                self.move_selection(Direction::Down)
+            }
+            RowsEvent::Sort(RowOrder::PIDDec) => {
+                self.order = RowOrder::PIDDec
+            }
+            RowsEvent::Sort(RowOrder::PIDInc) => {
+                self.order = RowOrder::PIDInc
+            }
+            RowsEvent::Sort(RowOrder::NameDec) => {
+                self.order = RowOrder::NameDec
+            }
+            RowsEvent::Sort(RowOrder::NameInc) => {
+                self.order = RowOrder::NameInc
+            }
+            RowsEvent::Sort(RowOrder::CPUDec) => {
+                self.order = RowOrder::CPUDec
+            }
+            RowsEvent::Sort(RowOrder::CPUInc) => {
+                self.order = RowOrder::CPUInc
+            }
+            RowsEvent::Sort(RowOrder::MemDec) => {
+                self.order = RowOrder::MemDec
+            }
+            RowsEvent::Sort(RowOrder::MemInc) => {
+                self.order = RowOrder::MemInc
+            }
+            RowsEvent::Filter(s) => {
+                self.filter = Some(s.clone())
+            }
+        }
+    }
+    
+    fn move_selection(&mut self, dir: Direction) {
         if let Some(selection) = self.selection {
             match dir {
                 Direction::Up   => { self.selection = Some(selection.saturating_sub(1)); }
@@ -35,7 +82,7 @@ impl Rows {
         } 
     }
 
-    pub fn enforce_invariant_on_selection(&mut self) {
+    fn enforce_invariant_on_selection(&mut self) {
         let row_count: usize = self.visible().len();
 
         self.selection = if row_count == 0 {
@@ -53,7 +100,10 @@ impl Rows {
     /// and sorting. The Iterator Item includes a Row reference and
     /// a flag indicating if the row is the selected row
     pub fn iter(&self) -> impl Iterator<Item = (&Row, bool)> {
-        self.visible().into_iter().map(move |i| (&self.rows[i], Some(i) == self.selection))
+        // Turn the vector returned by Visible into an iterator that references &Row
+        // Note: into_iter() consumes the collection returned by visible();
+        // rendering the collection unusable afterwards
+        self.visible().into_iter().enumerate().map(|(idx, visible_value)| (&self.rows[visible_value], Some(idx) == self.selection))
     }
    
     /// Return indices of visible rows after applying filter and sorting
@@ -69,45 +119,15 @@ impl Rows {
         indices
     }
 
-    /// Builder
-    pub fn filter(self, filter: &str) -> Self {
-        // Ownership of self.* is transferred
-        Self {
-            rows:      self.rows,
-            filter:    Some(String::from(filter)),
-            selection: self.selection,
-            order:     self.order
-        }
+    // Setter
+    pub fn replace_rows(&mut self, rows: Vec<Row>) {
+        self.rows = rows;
+        self.enforce_invariant_on_selection();
     }
-
-    /// Builder
-    pub fn selection(self, selection: Option<usize>) -> Self {
-        Self {
-            rows:      self.rows,
-            filter:    self.filter,
-            selection,
-            order:     self.order
-        }
-    }
-
-    /// Builder
-    pub fn order(self, order: RowOrder) -> Self {
-        Self {
-            rows:      self.rows,
-            filter:    self.filter,
-            selection: self.selection,
-            order
-        }
-    }
-
-    /// Builder
-    pub fn rows(self, rows: Vec<Row>) -> Self {
-        Self {
-            rows,
-            filter:    self.filter,
-            selection: self.selection,
-            order:     self.order,
-        }
+    
+    // Getter
+    pub fn get_selection(&self) -> Option<usize> {
+        self.selection
     }
 }
 
@@ -140,10 +160,10 @@ impl From<&ProcessSnapShot> for Rows {
 }
 
 pub struct Row {
-    pid:       u32,
-    name:      String,
-    cpu_usage: f32,
-    mem_usage: u64
+    pub pid:       u32,
+    pub name:      String,
+    pub cpu_usage: f32,
+    pub mem_usage: u64
 }
 
 impl From<&ProcessItem> for Row {
@@ -174,5 +194,65 @@ impl Row {
             RowOrder::MemDec =>  other.mem_usage.cmp(&self.mem_usage),
             RowOrder::MemInc =>  self.mem_usage.cmp(&other.mem_usage)
         }
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::{Row, Rows, Direction};
+    use crate::domain::process::primitive::ProcessItem;
+    use std::ffi::OsString;
+    use crate::domain::process::model::ProcessSnapShot;
+
+    #[test]
+    fn test_row_model_selection() {
+        // Creating ProcessSnapShot to create Rows from
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
+        let ts = chrono::Local::now().timestamp();
+        let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3], ts);
+
+        // Attempt to move selection out of bounds
+        let mut rows = Rows::from(&snap_shot);
+        for _i in 0..10 {
+            rows.move_selection(Direction::Down);
+        }
+        assert!(rows.selection == Some(2));
+        for _i in 0..10 {
+            rows.move_selection(Direction::Up);
+        }
+        assert!(rows.selection == Some(0));
+
+        // Snapshot increase in size
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
+        let item4 = ProcessItem::new(5, OsString::from("ps"), 5 as f32, 10 as u64);
+        let ts = chrono::Local::now().timestamp();
+        let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3,item4], ts);
+        let new_rows: Vec<Row> = Vec::<Row>::from(&snap_shot);
+        rows.replace_rows(new_rows);
+
+        assert!(rows.selection == Some(0));
+        for _i in 0..10 {
+            rows.move_selection(Direction::Down);
+        }
+        assert!(rows.selection == Some(3));
+
+        // Snapshot decrease in size
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
+        let ts = chrono::Local::now().timestamp();
+        let snap_shot = ProcessSnapShot::new(vec![item1,item2], ts);
+        let new_rows: Vec<Row> = Vec::<Row>::from(&snap_shot);
+        rows.replace_rows(new_rows);
+        assert!(rows.selection == Some(1));
+        
+        // Snapshot empty
+        let snap_shot = ProcessSnapShot::new(vec![], ts);
+        let new_rows: Vec<Row> = Vec::<Row>::from(&snap_shot);
+        rows.replace_rows(new_rows);
+        assert!(rows.selection == None);
     }
 }

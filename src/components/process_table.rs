@@ -1,6 +1,7 @@
-//pub mod component;
-// TODO 2/20/2026 - Do state, view, and controller need to be public?
-// I don't think so
-pub mod model;
-//pub mod view;
-//pub mod controller;
+pub mod component;
+//pub mod model;
+pub mod row;
+pub mod column;
+pub mod table;
+pub mod view;
+pub mod controller;
