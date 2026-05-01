@@ -3,12 +3,7 @@ TODOS:
 1. [3/12/26] The ProcessComponent's TableModel should be able to save state between runs. For example, a column configuration should be savable.
 This means the app must attempt to read from a config file on start. Initial idea is to add a config.toml file. This also means that configurable
 component's model should have a constructor that accepts config.
-
-2. [3/12/26] Investigate what might of caused the Terminal to freeze that one occurrence when running app.
-    - I think it might of had something to do with the 0-size mpsc channels
-
-    
-    */
+*/
 
 // Internal project imports
 use process_monitor::app::App;
@@ -17,8 +12,15 @@ use process_monitor::adapters::crossterm::input::Key;
 use process_monitor::services::sysinfo_worker::{SysinfoWorker, CallerMessage, WorkerMessage};
 // std library import
 use std::sync::mpsc;
+use std::sync::mpsc::TrySendError::{Disconnected, Full};
+// log
+use log::{info, warn, error};
+
 
 fn main() -> anyhow::Result<()> {
+    // Logger init
+    env_logger::init();
+    info!("Logger initialized");
     // Terminal setup
     let backend = ratatui::backend::CrosstermBackend::new(
         std::io::stdout());
@@ -29,6 +31,7 @@ fn main() -> anyhow::Result<()> {
         crossterm::terminal::EnterAlternateScreen,
         crossterm::event::EnableMouseCapture)?;
     terminal.clear()?;
+    info!("Terminal setup complete");
 
     // Create App
     let mut app = App::default();
@@ -45,14 +48,19 @@ fn main() -> anyhow::Result<()> {
     // Using blocking next to wait for first domain model to be built before entering event loop
     match sysinfo_worker.next()? {
         WorkerMessage::Done(process_snapshot) => {
+            info!("`Main` received domain model from `worker`");
             app.model_update(process_snapshot);
         } // mpsc channel channel `worker` => `caller` disconnected; exit program
         _ => {
+            error!("The MPSC channel from `worker` to `caller` DISCONNECTED");
             tear_down()?;
+            info!("Terminal tear down complete");
+            info!("Exiting main");
             std::process::exit(1);
         }
     }
     // Main event loop
+    info!("Entering main event loop");
     loop {
         // Get new domain model from `worker`
         match sysinfo_worker.try_next() {
@@ -61,15 +69,15 @@ fn main() -> anyhow::Result<()> {
                 app.model_update(process_snapshot);
             }
             Ok(WorkerMessage::Error(_recv_error)) => {
+                warn!("`Main` receiver error");
                 break;
-            } /* No new model; this is not an Error and is expected majority of checks*/
+            } // No new model; this is not an Error and is expected majority of passes
             Err(mpsc::TryRecvError::Empty) => {}
             Err(mpsc::TryRecvError::Disconnected) => {
+                warn!("The MPSC channel from `worker` to `main` DISCONNECTED");
                 break;
             }
         }
-        // This in it self could be a fun project
-        // terminal.draw(|frame| ratatui_renderer.draw(frame, app.render()))?;
         
         // Draw app
         terminal.draw(|frame| {
@@ -80,7 +88,7 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         })?;
-        // Match next AppEvent TODO [2/24/26] propogate errors found in `key_event` here and exit
+        // Match next AppEvent TODO [2/24/26] propagate errors found in `key_event` here and exit
         // gracefully
         match app_events.next()? {
             AppEvent::Key(key) => {
@@ -89,15 +97,28 @@ fn main() -> anyhow::Result<()> {
                 }
             }
             AppEvent::RebuildDomain => {
-                // Send `build` message to worker
-                if sysinfo_worker.send(CallerMessage::BuildProcessSnapShot).is_err() {
-                    break;
+                match sysinfo_worker.try_send(CallerMessage::BuildProcessSnapShot) {
+                    Ok(_)  => continue,
+                    Err(try_send_error) => {
+                        match try_send_error {
+                            Full(_b) => {
+                                warn!("MPSC channel from `main` to `worker` is FULL");
+                            }
+                            Disconnected(_b) => { 
+                                warn!("MPSC channel from `main` to `worker` is DISCONNECTED");
+                                break; 
+                            }
+                        }
+                    }
                 }
             }
             AppEvent::Tick => continue
         }
     }
-    tear_down()
+    tear_down();
+    info!("Terminal tear down complete");
+    info!("End of main");
+    Ok(())
 }
 
 fn tear_down() -> anyhow::Result<()> {

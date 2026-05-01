@@ -87,6 +87,10 @@ impl SysinfoWorker {
     pub fn send(&self, msg: CallerMessage) -> anyhow::Result<(), mpsc::SendError<CallerMessage>> {
         self.tx.send(msg)
     }
+    
+    pub fn try_send(&self, msg: CallerMessage) -> anyhow::Result<(), mpsc::TrySendError<CallerMessage>> {
+        self.tx.try_send(msg)
+    }
 }
 
 #[cfg(test)]

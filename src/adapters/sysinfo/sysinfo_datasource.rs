@@ -36,16 +36,18 @@ impl ProcessSnapShotSource for SysinfoDataSource {
             let name = process.name().to_os_string();
             // sysinfo cpu_usage returns total usage over all cores; dividing by core_count to get
             // an avg usage over all cores
-            let cpu_avg_core_usage = if let Some(core_count) = sysinfo::System::physical_core_count() {
+            let avg_cpu_usage = if let Some(core_count) = sysinfo::System::physical_core_count() {
                 process.cpu_usage() / core_count as f32
             } else {
                 process.cpu_usage()
             };
+            let total_cpu_usage = process.cpu_usage();
             let memory_usage = process.memory();
             let process_row = ProcessItem::new(
                 pid.as_u32(),
                 name,
-                cpu_avg_core_usage,
+                avg_cpu_usage,
+                total_cpu_usage,
                 memory_usage
                 );
             processes.push(process_row);

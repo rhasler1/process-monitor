@@ -4,6 +4,7 @@ TODO [3/2/26]
 - Runtime
 - Status
 */
+// https://docs.rs/sysinfo/latest/sysinfo/struct.Process.html
 
 // Following imports are used by [name](ProcessItem::name)
 use std::ffi::{OsString, OsStr};
@@ -13,23 +14,26 @@ use std::borrow::Cow;
 #[derive(Default, Clone)]
 pub struct ProcessItem {
     /// [pid](ProcessItem::pid) is a unique process identifier
-    pid:       u32,
-    name:      OsString,
-    cpu_usage: f32,
-    mem_usage: u64
+    pid:             u32,
+    name:            OsString,
+    avg_cpu_usage:   f32,
+    total_cpu_usage: f32,
+    mem_usage:       u64
 }
 
 impl ProcessItem {
     /// Creates a `ProcessItem` with [pid] [name] [cpu_usage] [memory_usage]
     pub fn new(
-        pid:       u32,
-        name:      OsString,
-        cpu_usage: f32,
+        pid:             u32,
+        name:            OsString,
+        avg_cpu_usage:   f32,
+        total_cpu_usage: f32,
         mem_usage: u64) -> Self {
         Self {
             pid,
             name,
-            cpu_usage,
+            avg_cpu_usage,
+            total_cpu_usage,
             mem_usage
         }
     }
@@ -50,9 +54,14 @@ impl ProcessItem {
         self.name.to_string_lossy()
     }
 
-    /// Returns [cpu_usage](ProcessItem::cpu_usage) as f32 to the `ProcessItem` it is called on
-    pub fn cpu_usage(&self) -> f32 {
-        self.cpu_usage
+    /// Returns [avg_cpu_usage](ProcessItem::cpu_usage) as f32 to the `ProcessItem` it is called on
+    pub fn avg_cpu_usage(&self) -> f32 {
+        self.avg_cpu_usage
+    }
+
+    /// Returns [total_cpu_usage](ProcessItem::cpu_usage) as f32 to the `ProcessItem` it is called on
+    pub fn total_cpu_usage(&self) -> f32 {
+        self.total_cpu_usage
     }
 
     /// Returns [mem_usage](ProcessItem::mem_usage) as u64 to the `ProcessItem` it is called on

@@ -31,7 +31,7 @@ impl TextLineComponent {
         if let Some(a) = action { // The key is recognized by the controller
             // The ret val indicates if the action could be processed by the `Model`
             // This value can be used to display some information to the screen
-            let _ = self.model.handle_action(a);
+            let _ = self.model.handle_event(a);
             EventState::Consumed
         } else { // The key is not recognized by the controller
             EventState::NotConsumed

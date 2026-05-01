@@ -22,8 +22,7 @@ pub enum RowOrder {
 #[derive(Clone, PartialEq)]
 pub enum RowsEvent {
     MoveSelection(Direction),
-    Sort(RowOrder),
-    Filter(String),
+    Sort(RowOrder)
 }
 
 pub struct Rows {
@@ -65,9 +64,6 @@ impl Rows {
             }
             RowsEvent::Sort(RowOrder::MemInc) => {
                 self.order = RowOrder::MemInc
-            }
-            RowsEvent::Filter(s) => {
-                self.filter = Some(s.clone())
             }
         }
     }
@@ -124,6 +120,12 @@ impl Rows {
         self.rows = rows;
         self.enforce_invariant_on_selection();
     }
+
+    pub fn set_filter(&mut self, filter_str: &str) {
+        let filter_string = String::from(filter_str);
+        self.filter = Some(filter_string);
+        self.enforce_invariant_on_selection();
+    }
     
     // Getter
     pub fn get_selection(&self) -> Option<usize> {
@@ -160,26 +162,28 @@ impl From<&ProcessSnapShot> for Rows {
 }
 
 pub struct Row {
-    pub pid:       u32,
-    pub name:      String,
-    pub cpu_usage: f32,
-    pub mem_usage: u64
+    pub pid:             u32,
+    pub name:            String,
+    pub avg_cpu_usage:   f32,
+    pub total_cpu_usage: f32,
+    pub mem_usage:       u64      // From ProcessSnapShot memory usage is in bytes
 }
 
 impl From<&ProcessItem> for Row {
     fn from(item: &ProcessItem) -> Self {
         Self {
-            pid:       item.pid(),
-            name:      item.name_to_string_lossy().to_string(),
-            cpu_usage: item.cpu_usage(),
-            mem_usage: item.mem_usage()
+            pid:             item.pid(),
+            name:            item.name_to_string_lossy().to_string(),
+            avg_cpu_usage:   item.avg_cpu_usage(),
+            total_cpu_usage: item.total_cpu_usage(),
+            mem_usage:       item.mem_usage()
         }
     }
 }
 
 impl Row {
     // TODO [3/7/26] Work on more advanced filtering options
-    pub fn filter(&self, filter: &str) -> bool {
+    fn filter(&self, filter: &str) -> bool {
         self.name.to_lowercase().contains(&filter.to_lowercase())
     }
 
@@ -189,11 +193,27 @@ impl Row {
             RowOrder::PIDInc =>  self.pid.cmp(&other.pid),
             RowOrder::NameDec => other.name.cmp(&self.name),
             RowOrder::NameInc => self.name.cmp(&other.name),
-            RowOrder::CPUDec =>  other.cpu_usage.partial_cmp(&self.cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
-            RowOrder::CPUInc =>  self.cpu_usage.partial_cmp(&other.cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
+            RowOrder::CPUDec =>  other.total_cpu_usage.partial_cmp(&self.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
+            RowOrder::CPUInc =>  self.total_cpu_usage.partial_cmp(&other.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
             RowOrder::MemDec =>  other.mem_usage.cmp(&self.mem_usage),
             RowOrder::MemInc =>  self.mem_usage.cmp(&other.mem_usage)
         }
+    }
+
+    pub fn mem_usage_as_b(&self) -> u64 {
+        self.mem_usage
+    }
+    
+    pub fn mem_usage_as_kb(&self) -> u64 {
+        self.mem_usage / 1024
+    }
+
+    pub fn mem_usage_as_mb(&self) -> u64 {
+        self.mem_usage / 1048576
+    }
+
+    pub fn mem_usage_as_gb(&self) -> u64 {
+        self.mem_usage / 1073741824
     }
 }
 

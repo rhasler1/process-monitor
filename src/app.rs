@@ -16,7 +16,6 @@ pub struct App {
 }
 
 impl App {
-    /// Must call app.init() after creating an `App` with App::default()
     pub fn default() -> Self {
         let process_snapshot = ProcessSnapShot::default();
         let process_table =    TableComponent::from(&process_snapshot);
@@ -34,7 +33,9 @@ impl App {
     }
 
     pub fn key_event(&mut self, key: Key) -> EventState {
-        let _ = self.process_table.key_event(key);
+        if matches!(self.process_table.key_event(key), EventState::Consumed) {
+            return EventState::Consumed
+        }
         EventState::NotConsumed
     }
 
@@ -42,27 +43,15 @@ impl App {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(10),
-                Constraint::Length(1)
+                Constraint::Fill(1),
             ])
             .split(frame.size());
-        let hchunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(10),
-                Constraint::Min(1)
-            ]).split(chunks[1]);
 
         self.process_table.draw(
             frame,
             chunks[0],
             true)?;
 
-        self.text_line.handle_draw(
-            frame,
-            hchunks[0],
-            true
-            )?;
         Ok(())
     }
 }

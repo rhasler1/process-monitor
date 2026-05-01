@@ -1,5 +1,6 @@
 use crate::components::process_table::row::{Row, Rows, RowsEvent};
 use crate::components::process_table::column::{Column, Columns, ColumnsEvent};
+use crate::components::text_line::model::{TextLineModel, TextLineEvent};
 use crate::domain::process::model::ProcessSnapShot;
 // A model receives an action and does something with it
 
@@ -12,22 +13,24 @@ pub enum TableFocus {
 
 //#[derive(Clone, PartialEq)]
 pub enum TableEvent {
-    MoveFocus,
+    MoveFocus(TableFocus),
     OnRows(RowsEvent),
-    OnCols(ColumnsEvent)
+    OnCols(ColumnsEvent),
+    OnFilter(TextLineEvent)
 }
 
 pub struct TableModel {
     rows:    Rows,
     columns: Columns,
+    filter:  TextLineModel,
     focus:   TableFocus
 }
 
 impl TableModel {
     pub fn table_event(&mut self, event: TableEvent) {
         match event {
-            TableEvent::MoveFocus => {
-                self.move_focus();
+            TableEvent::MoveFocus(table_focus) => {
+                self.focus = table_focus;
             }
             TableEvent::OnRows(row_event) => {
                 self.rows.row_event(row_event);
@@ -35,15 +38,11 @@ impl TableModel {
             TableEvent::OnCols(col_event) => {
                 self.columns.cols_event(col_event);
             }
-            //_ => {}
-        }
-    }
-
-    fn move_focus(&mut self) {
-        match self.focus {
-            TableFocus::Rows =>    { self.focus = TableFocus::Filter }
-            TableFocus::Filter =>  { self.focus = TableFocus::Columns }
-            TableFocus::Columns => { self.focus = TableFocus::Rows }
+            TableEvent::OnFilter(filter_event) => {
+                self.filter.handle_event(filter_event);
+                let filter_str = self.filter.buffer();
+                self.rows.set_filter(filter_str);
+            }
         }
     }
 
@@ -74,6 +73,19 @@ impl TableModel {
     pub fn cols_count(&self) -> usize {
         self.columns.count()
     }
+
+    // Filter methods
+    pub fn filter_str(&self) -> &str {
+        self.filter.buffer()
+    }
+
+    pub fn filter_len(&self) -> usize {
+        self.filter.len()
+    }
+
+    pub fn filter_cursor(&self) -> usize {
+        self.filter.cursor()
+    }
 }
 
 impl From<&ProcessSnapShot> for TableModel {
@@ -81,6 +93,7 @@ impl From<&ProcessSnapShot> for TableModel {
         Self {
             rows:    Rows::from(snapshot),
             columns: Columns::default(),
+            filter:  TextLineModel::default(),
             focus:   TableFocus::Rows
         }
     }

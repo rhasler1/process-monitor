@@ -1,3 +1,6 @@
+// 4/20/26 - Deprecating... I do not want to write a comprehensive adapter for ratatui...
+// This would end up being a lot of work, e.g,. Building a render tree
+
 // Import to create theme adapter
 use std::collections::HashMap;
 // Import ratatui

@@ -3,7 +3,7 @@ pub enum MoveDirection {
     Right
 }
 
-pub enum TextLineAction {
+pub enum TextLineEvent {
     InsertCharacter(char),
     MoveCursor(MoveDirection),
     RemoveCharacter
@@ -28,11 +28,11 @@ impl Default for TextLineModel {
 impl TextLineModel {
     pub const BUFFER_CAPACITY: usize = 100;
     
-    pub fn handle_action(&mut self, action: TextLineAction) -> bool {
-        match action {
-            TextLineAction::InsertCharacter(c) => self.insert_invariant(c),
-            TextLineAction::MoveCursor(dir)    => self.move_invariant(dir),
-            TextLineAction::RemoveCharacter    => self.remove_invariant()
+    pub fn handle_event(&mut self, event: TextLineEvent) -> bool {
+        match event {
+            TextLineEvent::InsertCharacter(c) => self.insert_invariant(c),
+            TextLineEvent::MoveCursor(dir)    => self.move_invariant(dir),
+            TextLineEvent::RemoveCharacter    => self.remove_invariant()
         }
     }
     
@@ -105,42 +105,42 @@ impl TextLineModel {
 
 #[cfg(test)]
 pub mod test {
-    use super::{TextLineModel, TextLineAction, MoveDirection};
+    use super::{TextLineModel, TextLineEvent, MoveDirection};
     #[test]
     fn test_text_line_model() {
         let mut model = TextLineModel::default();
-        model.handle_action(TextLineAction::MoveCursor(MoveDirection::Left));
+        model.handle_event(TextLineEvent::MoveCursor(MoveDirection::Left));
         assert_eq!(model.cursor(), 0);
-        model.handle_action(TextLineAction::MoveCursor(MoveDirection::Right));
+        model.handle_event(TextLineEvent::MoveCursor(MoveDirection::Right));
         assert_eq!(model.cursor(), 0);
         for _i in 0..200 {
-            model.handle_action(TextLineAction::InsertCharacter('c'));
+            model.handle_event(TextLineEvent::InsertCharacter('c'));
         }
         assert_eq!(model.len(), 100);
         assert_eq!(model.cursor(), 100);
-        model.handle_action(TextLineAction::MoveCursor(MoveDirection::Right));
+        model.handle_event(TextLineEvent::MoveCursor(MoveDirection::Right));
         assert_eq!(model.len(), 100);
         assert_eq!(model.cursor(), 100);
-        model.handle_action(TextLineAction::MoveCursor(MoveDirection::Left));
+        model.handle_event(TextLineEvent::MoveCursor(MoveDirection::Left));
         assert_eq!(model.len(), 100);
         assert_eq!(model.cursor(), 99);
-        model.handle_action(TextLineAction::MoveCursor(MoveDirection::Right));
+        model.handle_event(TextLineEvent::MoveCursor(MoveDirection::Right));
         assert_eq!(model.len(), 100);
         assert_eq!(model.cursor(), 100);
         for _i in 0..10 {
-            model.handle_action(TextLineAction::MoveCursor(MoveDirection::Left));
+            model.handle_event(TextLineEvent::MoveCursor(MoveDirection::Left));
         }
-        model.handle_action(TextLineAction::RemoveCharacter);
+        model.handle_event(TextLineEvent::RemoveCharacter);
         assert_eq!(model.len(), 99);
         assert_eq!(model.cursor(), 89);
         for _i in 0..200 {
-            model.handle_action(TextLineAction::RemoveCharacter);
+            model.handle_event(TextLineEvent::RemoveCharacter);
         }
         assert_eq!(model.len(), 10);
         assert_eq!(model.cursor(), 0);
         for _i in 0..200 {
-            model.handle_action(TextLineAction::MoveCursor(MoveDirection::Right));
-            model.handle_action(TextLineAction::RemoveCharacter); 
+            model.handle_event(TextLineEvent::MoveCursor(MoveDirection::Right));
+            model.handle_event(TextLineEvent::RemoveCharacter); 
         }
         assert_eq!(model.len(), 0);
         assert_eq!(model.cursor(), 0);
