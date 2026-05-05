@@ -26,7 +26,8 @@ impl TableController {
             (Key::Char('C'), TableFocus::Rows) => Some(TableEvent::OnRows(RowsEvent::Sort(RowOrder::CPUInc))),
             (Key::Char('m'), TableFocus::Rows) => Some(TableEvent::OnRows(RowsEvent::Sort(RowOrder::MemDec))),
             (Key::Char('M'), TableFocus::Rows) => Some(TableEvent::OnRows(RowsEvent::Sort(RowOrder::MemInc))),
-            
+            (Key::Char('T'), TableFocus::Rows) => Some(TableEvent::OnRows(RowsEvent::TerminateSelection)),
+
             // Column
             (Key::Left,      TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::MoveSelection(ColsDirection::Left))),
             (Key::Right,     TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::MoveSelection(ColsDirection::Right))),

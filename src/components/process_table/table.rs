@@ -2,6 +2,7 @@ use crate::components::process_table::row::{Row, Rows, RowsEvent};
 use crate::components::process_table::column::{Column, Columns, ColumnsEvent};
 use crate::components::text_line::model::{TextLineModel, TextLineEvent};
 use crate::domain::process::model::ProcessSnapShot;
+use crate::events::EventState;
 // A model receives an action and does something with it
 
 #[derive(Clone, PartialEq)]
@@ -27,13 +28,14 @@ pub struct TableModel {
 }
 
 impl TableModel {
-    pub fn table_event(&mut self, event: TableEvent) {
+    pub fn table_event(&mut self, event: TableEvent) -> EventState {
         match event {
             TableEvent::MoveFocus(table_focus) => {
                 self.focus = table_focus;
             }
             TableEvent::OnRows(row_event) => {
-                self.rows.row_event(row_event);
+                // `row_event` may return EventState::ConsumedWithReturnPayload(pid)
+                return self.rows.row_event(row_event);
             }
             TableEvent::OnCols(col_event) => {
                 self.columns.cols_event(col_event);
@@ -44,7 +46,17 @@ impl TableModel {
                 self.rows.set_filter(filter_str);
             }
         }
+        EventState::Consumed
     }
+
+    /*pub fn table_event_term(&self) -> Option<u32> {
+        if matches!(self.focus, TableFocus::Rows) {
+            self.rows.row_event_term()
+        }
+        else {
+            None
+        }
+    }*/
 
     pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) {
         let new_rows = Vec::<Row>::from(snapshot);

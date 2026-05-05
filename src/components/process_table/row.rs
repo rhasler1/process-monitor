@@ -1,5 +1,6 @@
 use crate::domain::process::primitive::ProcessItem;
 use crate::domain::process::model::ProcessSnapShot;
+use crate::events::EventState;
 
 #[derive(Clone, PartialEq)]
 pub enum Direction {
@@ -22,6 +23,7 @@ pub enum RowOrder {
 #[derive(Clone, PartialEq)]
 pub enum RowsEvent {
     MoveSelection(Direction),
+    TerminateSelection,
     Sort(RowOrder)
 }
 
@@ -33,7 +35,7 @@ pub struct Rows {
 }
 
 impl Rows {
-    pub fn row_event(&mut self, event: RowsEvent) {
+    pub fn row_event(&mut self, event: RowsEvent) -> EventState {
         match event {
             RowsEvent::MoveSelection(Direction::Up) => {
                 self.move_selection(Direction::Up)
@@ -54,20 +56,30 @@ impl Rows {
                 self.order = RowOrder::NameInc
             }
             RowsEvent::Sort(RowOrder::CPUDec) => {
-                self.order = RowOrder::CPUDec
+                self.order = RowOrder::CPUDec;
             }
             RowsEvent::Sort(RowOrder::CPUInc) => {
-                self.order = RowOrder::CPUInc
+                self.order = RowOrder::CPUInc;
             }
             RowsEvent::Sort(RowOrder::MemDec) => {
-                self.order = RowOrder::MemDec
+                self.order = RowOrder::MemDec;
             }
             RowsEvent::Sort(RowOrder::MemInc) => {
-                self.order = RowOrder::MemInc
+                self.order = RowOrder::MemInc;
+            }
+            RowsEvent::TerminateSelection => {
+                if let Some(pid) = self.get_selected_value() {
+                    return EventState::ReturnPayload(pid)
+                }
             }
         }
+        EventState::Consumed
     }
-    
+
+    /*pub fn row_event_term(&self) -> Option<u32> {
+        self.get_selected_value()
+    }*/
+
     fn move_selection(&mut self, dir: Direction) {
         if let Some(selection) = self.selection {
             match dir {
@@ -79,7 +91,7 @@ impl Rows {
     }
 
     fn enforce_invariant_on_selection(&mut self) {
-        let row_count: usize = self.visible().len();
+        let row_count: usize = self.filter_and_sort_indices().len();
 
         self.selection = if row_count == 0 {
             None
@@ -92,18 +104,31 @@ impl Rows {
         };
     }
 
+    fn get_selected_value(&self) -> Option<u32> {
+        if let Some(selection) = self.selection {
+            if let Some(idx) = self.filter_and_sort_indices().get(selection) {
+                if let Some(item) = self.rows.get(*idx) {
+                    return Some(item.pid)
+                }
+                return None
+            }
+            return None
+        }
+        None
+    }
+
     /// Returns iterator over visible rows after applying filter
     /// and sorting. The Iterator Item includes a Row reference and
     /// a flag indicating if the row is the selected row
     pub fn iter(&self) -> impl Iterator<Item = (&Row, bool)> {
-        // Turn the vector returned by Visible into an iterator that references &Row
+        // Turn the vector returned by visible() into an iterator that references &Row
         // Note: into_iter() consumes the collection returned by visible();
         // rendering the collection unusable afterwards
-        self.visible().into_iter().enumerate().map(|(idx, visible_value)| (&self.rows[visible_value], Some(idx) == self.selection))
+        self.filter_and_sort_indices().into_iter().enumerate().map(|(idx, visible_value)| (&self.rows[visible_value], Some(idx) == self.selection))
     }
    
     /// Return indices of visible rows after applying filter and sorting
-    fn visible(&self) -> Vec<usize> {
+    fn filter_and_sort_indices(&self) -> Vec<usize> {
         let mut indices: Vec<usize> = (0..self.rows.len()).collect();
         
         if let Some(filter) = &self.filter {

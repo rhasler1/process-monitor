@@ -21,6 +21,14 @@ impl SysinfoDataSource {
     pub fn refresh_all(&mut self) {
         self.system.refresh_all();
     }
+   
+    /// Terminate process
+    pub fn terminate_process(&self, pid: u32) {
+        let pid: sysinfo::Pid = sysinfo::Pid::from_u32(pid);
+        if let Some(process) = self.system.process(pid) {
+            process.kill();
+        }
+    }
 }
 
 impl ProcessSnapShotSource for SysinfoDataSource {

@@ -8,6 +8,7 @@
 
 // Make component modules visible ouside parent
 pub mod process_table;
+pub mod process_term;
 pub mod text_line;
 pub mod utils;
 

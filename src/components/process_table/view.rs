@@ -3,7 +3,7 @@ use crate::components::process_table::column::{ColumnID, MemUnitOptions, CPUUnit
 use crate::components::process_table::table::{TableFocus, TableModel};
 use crate::components::utils::scroll::Scroll;
 use ratatui::layout::Alignment;
-use ratatui::prelude::{Frame, Rect, Line, Layout, Direction, Constraint};
+use ratatui::prelude::{Frame, Rect, Layout, Direction, Constraint};
 use ratatui::widgets::{Cell, Row, Table, Paragraph, Block, Borders};
 use ratatui::style::{Style, Color};
 
