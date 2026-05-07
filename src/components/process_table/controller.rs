@@ -1,6 +1,6 @@
 use crate::components::process_table::table::{TableEvent, TableFocus, TableModel};
 use crate::components::process_table::row::{RowsEvent, Direction as RowDirection, RowOrder};
-use crate::components::process_table::column::{Column, ColumnID, ColumnsEvent, MemUnitOptions, CPUUnitOptions, Direction as ColsDirection};
+use crate::components::process_table::column::{Column, ColumnID, ColumnEvent, MemUnitOptions, CPUUnitOptions, Direction as ColsDirection};
 use crate::adapters::crossterm::input::Key;
 use crate::components::text_line::model::{TextLineEvent, MoveDirection as TextLineMoveDirection};
 
@@ -29,14 +29,14 @@ impl TableController {
             (Key::Char('T'), TableFocus::Rows) => Some(TableEvent::OnRows(RowsEvent::TerminateSelection)),
 
             // Column
-            (Key::Left,      TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::MoveSelection(ColsDirection::Left))),
-            (Key::Right,     TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::MoveSelection(ColsDirection::Right))),
-            (Key::Char('p'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::InsertColumn(Column::from(ColumnID::PID)))),
-            (Key::Char('n'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::InsertColumn(Column::from(ColumnID::Name)))),
-            (Key::Char('c'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::InsertColumn(Column::from(ColumnID::CPU(CPUUnitOptions::Avg))))),
-            (Key::Char('m'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::InsertColumn(Column::from(ColumnID::Mem(MemUnitOptions::B))))),
-            (Key::Backspace, TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::RemoveColumn)),
-            (Key::Char('u'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnsEvent::RotateUnit)),
+            (Key::Left,      TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::MoveSelection(ColsDirection::Left))),
+            (Key::Right,     TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::MoveSelection(ColsDirection::Right))),
+            (Key::Char('p'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::InsertColumn(Column::from(ColumnID::PID)))),
+            (Key::Char('n'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::InsertColumn(Column::from(ColumnID::Name)))),
+            (Key::Char('c'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::InsertColumn(Column::from(ColumnID::CPU(CPUUnitOptions::Avg))))),
+            (Key::Char('m'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::InsertColumn(Column::from(ColumnID::Mem(MemUnitOptions::B))))),
+            (Key::Backspace, TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::RemoveColumn)),
+            (Key::Char('u'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::RotateUnit)),
 
             // Filter
             (Key::Char(c),   TableFocus::Filter) => Some(TableEvent::OnFilter(TextLineEvent::InsertCharacter(c))),

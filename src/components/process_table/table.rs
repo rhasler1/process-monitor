@@ -1,5 +1,5 @@
 use crate::components::process_table::row::{Row, Rows, RowsEvent};
-use crate::components::process_table::column::{Column, Columns, ColumnsEvent};
+use crate::components::process_table::column::{Column, Columns, ColumnEvent};
 use crate::components::text_line::model::{TextLineModel, TextLineEvent};
 use crate::domain::process::model::ProcessSnapShot;
 use crate::events::EventState;
@@ -16,7 +16,7 @@ pub enum TableFocus {
 pub enum TableEvent {
     MoveFocus(TableFocus),
     OnRows(RowsEvent),
-    OnCols(ColumnsEvent),
+    OnCols(ColumnEvent),
     OnFilter(TextLineEvent)
 }
 
@@ -38,7 +38,7 @@ impl TableModel {
                 return self.rows.row_event(row_event);
             }
             TableEvent::OnCols(col_event) => {
-                self.columns.cols_event(col_event);
+                self.columns.event(col_event);
             }
             TableEvent::OnFilter(filter_event) => {
                 self.filter.handle_event(filter_event);
@@ -83,7 +83,7 @@ impl TableModel {
     }
 
     pub fn cols_count(&self) -> usize {
-        self.columns.count()
+        self.columns.get_count()
     }
 
     // Filter methods

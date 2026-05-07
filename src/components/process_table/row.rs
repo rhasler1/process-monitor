@@ -207,7 +207,7 @@ impl From<&ProcessItem> for Row {
 }
 
 impl Row {
-    // TODO [3/7/26] Work on more advanced filtering options
+    // TODO: Add more filtering options
     fn filter(&self, filter: &str) -> bool {
         self.name.to_lowercase().contains(&filter.to_lowercase())
     }
@@ -252,9 +252,9 @@ pub mod test {
     #[test]
     fn test_row_model_selection() {
         // Creating ProcessSnapShot to create Rows from
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
         let ts = chrono::Local::now().timestamp();
         let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3], ts);
 
@@ -270,10 +270,10 @@ pub mod test {
         assert!(rows.selection == Some(0));
 
         // Snapshot increase in size
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
-        let item4 = ProcessItem::new(5, OsString::from("ps"), 5 as f32, 10 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
+        let item4 = ProcessItem::new(5, OsString::from("ps"), 5 as f32, 5 as f32, 10 as u64);
         let ts = chrono::Local::now().timestamp();
         let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3,item4], ts);
         let new_rows: Vec<Row> = Vec::<Row>::from(&snap_shot);
@@ -286,8 +286,8 @@ pub mod test {
         assert!(rows.selection == Some(3));
 
         // Snapshot decrease in size
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
         let ts = chrono::Local::now().timestamp();
         let snap_shot = ProcessSnapShot::new(vec![item1,item2], ts);
         let new_rows: Vec<Row> = Vec::<Row>::from(&snap_shot);

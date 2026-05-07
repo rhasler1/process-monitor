@@ -84,34 +84,30 @@ fn main() -> anyhow::Result<()> {
         })?;
         match app_events.next()? {
             AppEvent::Key(key) => {
-                let consumed = app.key_event(key).is_consumed();
-                if !consumed && key == Key::Esc {
+                let event_state = app.key_event(key);
+                if event_state.is_return_payload() {
+                    // safe to unwrap here
+                    let pid = event_state.payload().unwrap();
+                    match sysinfo_worker.try_send(CallerMessage::TerminateProcess(pid)) {
+                        Ok(_) => { continue }
+                        Err(try_send_err) => {
+                            match try_send_err {
+                                Full(_) => {
+                                    warn!("MPSC channel from `main` to `worker` is FULL");
+                                }
+                                Disconnected(_) => {
+                                    error!("MPSC channel from `main` to `worker` is DISCONNECTED");
+                                break;
+                                }
+                            }
+
+                        }
+                    }
+                }
+                if !event_state.is_consumed() && key == Key::Esc {
                     info!("`Main`: event to exit app...");
                     break;
                 }
-                // TODO: Need to add ability to terminate processes to sysinfo worker
-                // Also need to implement the termination messages to and from sysinfo worker
-                // TODO [5/2] Test this
-                /*if app.is_term_event_ready() {
-                    // Get pid
-                    let pid: u32 = app.get_pid_to_terminate();
-                    // Send pid to sysinfo worker
-                    match sysinfo_worker.try_send(CallerMessage::TerminatePid(pid)) {
-                        Ok(_) => continue;
-                        Err(try_send_error) {
-                            match try_send_error {
-                                Full(_b) => {
-                                    warn!("MPSC channel from `main` to `worker` is FULL");
-                                }
-                                Disconnected(_b) => {
-                                    error!("MPSC channel from `main` to `worker` is DISCONNECTED");
-                                    break;
-                                }
-                            }
-                        }
-                        // Leaving off here
-                    }
-                }*/
             }
             AppEvent::RebuildDomain => {
                 match sysinfo_worker.try_send(CallerMessage::BuildProcessSnapShot) {
@@ -151,3 +147,13 @@ fn tear_down() -> anyhow::Result<()> {
         )?;
     Ok(())
 }
+
+/*
+TODO:
+- Clean up process_table naming convention
+- Write integration tests at App level
+- Write key_config and inject into components (remove hardcoded key values from controllers)
+- Serialize & deserialize component structures so that column order and sort order can be saved across runs
+- Improve termination view
+- Rewrite main README.md
+*/

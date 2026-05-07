@@ -1,6 +1,5 @@
 # Events
 - Initial implementation & testing of app\_events.rs is completed.
-- TODO 2/18/2026 - Read and revise
 
 ## Description
 Sends events to the main event thread
@@ -33,4 +32,3 @@ the beginning of the loop
     - If `crossterm::event` is found then adapt to `KeyInput` | `MouseInput` and send over mpsc channel then go back to `5`.
     - If crossterm event queue is empty then continue attempting to poll for duration `TICK_RATE`
     - At the end of `TICK_RATE` send a `Tick` event over the mpsc channel
-

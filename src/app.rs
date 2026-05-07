@@ -50,26 +50,25 @@ impl App {
                 let mut event_state = self.process_table.key_event(key);
                 if event_state.is_return_payload() {
                     // safe to unwrap here
-                    let pid = event_state.payload().unwrap();
-                    info!("`App`: key_event(): event_state.payload() = {pid}");
+                    let pid = event_state.payload();
+                    info!("`App`: key_event(): focus = Table: event_state.payload() = {pid:?}");
                     self.process_term.set(pid);
-                    //TODO [5/5]
-                    //self.focus = Focus::Termination;
-                    
-                    // payload is processed and set event_state to consumed
+                    self.focus = Focus::Termination;
                     event_state = EventState::Consumed;
                 }
                 event_state
             }
             Focus::Termination => {
-                // TODO [5/5]
-                EventState::NotConsumed
+                let event_state = self.process_term.key_event(key);
+                if event_state.is_consumed() || event_state.is_return_payload() {
+                    self.process_term.set(None);
+                    self.focus = Focus::Table;
+                }
+                event_state
             }
         };
         return_val
     }
-
-
     
     pub fn draw(&mut self, frame: &mut Frame) -> anyhow::Result<()> {
         let chunks = Layout::default()
@@ -79,10 +78,20 @@ impl App {
             ])
             .split(frame.size());
 
-        self.process_table.draw(
-            frame,
-            chunks[0],
-            true)?;
+        match self.focus {
+            Focus::Table => {
+                self.process_table.draw(
+                    frame,
+                    chunks[0],
+                    true)?;
+            }
+            Focus::Termination => {
+                self.process_term.draw(
+                    frame, 
+                    chunks[0], 
+                    true)?;
+            }
+        }
 
         Ok(())
     }

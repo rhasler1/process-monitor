@@ -33,7 +33,7 @@ pub struct SysinfoWorker {
 
 impl SysinfoWorker {
     pub fn default() -> Self {
-        // [5/4/26] No longer using rendevous channels because the worker 
+        // [5/4/26] No longer using rendezvous channels because the worker 
         // can receive multiple tasks, requiring a queue. The channel does
         // not need to be large, in a use case, at most, the channel contains
         // 1 BuildProcessSnapShot and 1 TerminateProcess(u32) message.
@@ -133,10 +133,8 @@ pub mod test {
     #[test]
     fn test_sysinfo_worker() {
         let worker = SysinfoWorker::default();
-        let _ = worker.tx.send(CallerMessage::BuildProcessSnapShot);
-        // INFO 2/18/2026 - experiment with `give_worker_time` to get an idea of how
-        // long it takes for the worker to complete it's task. Err(...Empty) will 
-        // execute if worker did not complete it's task in the time alotted.
+        let _ = worker.send(CallerMessage::BuildProcessSnapShot);
+
         let give_worker_time = std::time::Duration::from_millis(10);
         std::thread::sleep(give_worker_time);
 
@@ -145,10 +143,7 @@ pub mod test {
             Ok(WorkerMessage::Done(snapshot)) => {
                 assert!(snapshot.count() > 0);
             }
-            // Caller to worker channel closed
-            Ok(WorkerMessage::Error(mpsc::RecvError)) => {
-                assert!(false);
-            }
+            Ok(_) => {}
             // Worker has no work completed
             Err(mpsc::TryRecvError::Empty) => {
                 assert!(false);

@@ -95,16 +95,16 @@ pub mod test {
     
     #[test]
     fn test_process_snap_shot() {
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
         
         // [ts] Set ts by chrono::Local::now().timestamp();
         let ts = chrono::Local::now().timestamp();
         let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3], ts);
         assert_eq!(snap_shot.count(), 3);
         let iter = snap_shot.iter();
-        let _item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
+        let _item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
         let pids: Vec<_> = iter.map(|item| {item.pid()}).collect();
         assert_eq!(pids[0],2);
         assert_eq!(pids[1],3);
@@ -114,17 +114,17 @@ pub mod test {
     use super::ProcessSnapShotHistory;
     #[test]
     fn test_process_snap_shot_history() {
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
         
         // [ts] Set ts by chrono::Local::now().timestamp();
         let ts = chrono::Local::now().timestamp();
         let snapshot1 = ProcessSnapShot::new(vec![item1,item2,item3], ts);
 
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 6 as f32, 11 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 7 as f32, 12 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 8 as f32, 13 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 6 as f32, 6 as f32, 11 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 7 as f32, 7 as f32, 12 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 8 as f32, 8 as f32, 13 as u64);
         let snapshot2 = ProcessSnapShot::new(vec![item1,item2,item3], 10 as i64);
 
         let mut history = ProcessSnapShotHistory::new(2);

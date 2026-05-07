@@ -104,5 +104,5 @@ mod test {
             };
         }
     }
-// TODO 2/17/2026 TEST channel size?
+    // TODO: Experiment with different channel sizes
 }

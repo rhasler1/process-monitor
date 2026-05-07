@@ -1,4 +1,3 @@
-// TODO [3/30/26] It could be interesting to change both units and decimal places
 #[derive(PartialEq)]
 pub enum MemUnitOptions {
     B,
@@ -33,7 +32,6 @@ impl CPUUnitOptions {
     }
 }
 
-/// ColumnID: Identifier
 #[derive(PartialEq)]
 pub enum ColumnID {
     PID,
@@ -43,7 +41,6 @@ pub enum ColumnID {
 }
 
 impl ColumnID {
-    /// ColumnID::as_str() -> &'static str: Identifier String representation 
     pub fn as_str(&self) -> &'static str {
         match self {
             ColumnID::PID       => "pid",
@@ -54,7 +51,6 @@ impl ColumnID {
     }
 }
 
-/// Column
 pub struct Column {
     pub id:  ColumnID,
 }
@@ -71,14 +67,12 @@ impl From<ColumnID> for Column {
     }
 }
 
-/// Direction: Signals which way to move selection
 pub enum Direction {
     Left,
     Right
 }
 
-/// ColumnsEvent: Events that can act on `Columns`
-pub enum ColumnsEvent {
+pub enum ColumnEvent {
     MoveSelection(Direction),
     InsertColumn(Column),
     RemoveColumn,
@@ -87,143 +81,192 @@ pub enum ColumnsEvent {
 
 pub struct Columns {
     columns:   Vec<Column>,
+    // capacity: max column count
     capacity:  usize,
-    // There must always be at least 1 col, hence selection should not be optional
-    selection: usize
+    selection: Option<usize>
 }
 
 impl Columns {
     pub const DEFAULT_CAPACITY: usize = 10;
 
-    pub fn iter(&self) -> impl Iterator<Item = (&Column, bool)> {
-        self.columns.iter().enumerate().map(|(idx, col)| (col, idx == self.selection))
-    }
-
-    pub fn count(&self) -> usize {
-        self.columns.len()
-    }
-
-    pub fn get_selection(&self) -> usize {
-        self.selection
-    }
-
-    // TODO: Can probably rename this to `event`
-    pub fn cols_event(&mut self, event: ColumnsEvent) {
+    pub fn event(&mut self, event: ColumnEvent) {
         match event {
-            ColumnsEvent::MoveSelection(Direction::Left) => {
+            ColumnEvent::MoveSelection(Direction::Left) => {
                 self.move_selection(Direction::Left);
             }
-            ColumnsEvent::MoveSelection(Direction::Right) => {
+            ColumnEvent::MoveSelection(Direction::Right) => {
                 self.move_selection(Direction::Right);
             }
-            ColumnsEvent::InsertColumn(col) => {
-                let _ = self.insert_invariant(col);
+            ColumnEvent::InsertColumn(col) => {
+                self.insert_col(col);
             }
-            ColumnsEvent::RemoveColumn => {
-                let _ = self.remove_invariant();
+            ColumnEvent::RemoveColumn => {
+                self.remove_col();
             }
-            ColumnsEvent::RotateUnit => {
+            ColumnEvent::RotateUnit => {
                 self.rotate_unit();
             }
         }
     }
 
-    fn rotate_unit(&mut self) -> bool {
-        let col = self.columns.get(self.selection);
-        if let Some(col) = col {
-            match &col.id {
-                ColumnID::Mem(old_unit) => {
-                    let new_unit = match old_unit {
-                        MemUnitOptions::B  => MemUnitOptions::KB,
-                        MemUnitOptions::KB => MemUnitOptions::MB,
-                        MemUnitOptions::MB => MemUnitOptions::GB,
-                        MemUnitOptions::GB => MemUnitOptions::B
-                    };
-                    self.columns.remove(self.selection);
-                    self.columns.insert(self.selection, Column::from(ColumnID::Mem(new_unit)));
-                    return true
-                }
-                ColumnID::CPU(old_unit) => {
-                    let new_unit = match old_unit {
-                        CPUUnitOptions::Avg => CPUUnitOptions::Tot,
-                        CPUUnitOptions::Tot => CPUUnitOptions::Avg
-                    };
-                    self.columns.remove(self.selection);
-                    self.columns.insert(self.selection, Column::from(ColumnID::CPU(new_unit)));
-                }
-                _ => return false
-            }
-        }
-        false
-    }
+    fn apply_selection_invariant(&mut self) {
+        let col_count = self.columns.len();
 
-    fn move_selection(&mut self, dir: Direction) {
-        match dir {
-            Direction::Left  => { self.selection = self.selection.saturating_sub(1); }
-            Direction::Right => { self.selection = self.selection.saturating_add(1); }
-        }
-        self.enforce_invariant_on_selection();
-    }
-
-    fn enforce_invariant_on_selection(&mut self) {
-        let col_count: usize = self.columns.len();
-        let selection = self.selection;
-        self.selection = if selection < col_count {
-            selection
+        self.selection = if col_count == 0 {
+            None
         } else {
-            selection - 1
+            match self.selection {
+                Some(selection) if selection < col_count => Some(selection),
+                Some(_) => Some(col_count - 1),
+                None => Some(0)
+            }
         };
     }
 
-    fn insert_invariant(&mut self, col: Column) -> bool {
-        if self.columns.len() < self.capacity {
-            self.columns.insert(self.selection, col);
-            self.selection = self.selection + 1;
-            return true
-        } else {
-            return false
+    fn move_selection(&mut self, dir: Direction) {
+        if let Some(selection) = self.selection {
+            match dir {
+                Direction::Left  => { self.selection = Some(selection.saturating_sub(1)); }
+                Direction::Right => { self.selection = Some(selection.saturating_add(1)); }
+            }
+            self.apply_selection_invariant();
+        } 
+    }
+ 
+    fn insert_col(&mut self, col: Column) {
+        let col_count = self.columns.len();
+        
+        if col_count < self.capacity {
+            let insert_pos = 
+                if let Some(selection) = self.selection {
+                    selection
+                } else {
+                    0
+                };
+            self.columns.insert(insert_pos, col);
+            self.apply_selection_invariant();
         }
     }
 
-    fn remove_invariant(&mut self) -> bool {
-        if self.columns.len() == 0 {
-            panic!("Columns length invariant broken");
-        } else if self.columns.len() == 1 {
-            return false
-        } else {
-            self.columns.remove(self.selection);
-            self.selection = self.selection.saturating_sub(1);
-            return true
+    fn remove_col(&mut self) {
+        if let Some(selection) = self.selection {
+            self.columns.remove(selection);
+            self.apply_selection_invariant();
         }
+    }
+
+    fn rotate_unit(&mut self) {
+        if let Some(selection) = self.selection {
+            if let Some(col) = self.columns.get(selection) {
+                match &col.id {
+                    ColumnID::Mem(old_unit) => {
+                        let new_unit = match old_unit {
+                            MemUnitOptions::B  => MemUnitOptions::KB,
+                            MemUnitOptions::KB => MemUnitOptions::MB,
+                            MemUnitOptions::MB => MemUnitOptions::GB,
+                            MemUnitOptions::GB => MemUnitOptions::B
+                        };
+                        self.columns.remove(selection);
+                        self.columns.insert(selection, Column::from(ColumnID::Mem(new_unit)));
+                    }
+                    ColumnID::CPU(old_unit) => {
+                        let new_unit = match old_unit {
+                            CPUUnitOptions::Avg => CPUUnitOptions::Tot,
+                            CPUUnitOptions::Tot => CPUUnitOptions::Avg
+                        };
+                        self.columns.remove(selection);
+                        self.columns.insert(selection, Column::from(ColumnID::CPU(new_unit)));
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    pub fn get_count(&self) -> usize {
+        self.columns.len()
+    }
+
+    /*pub fn get_selection(&self) -> Option<usize> {
+        self.selection
+    }*/
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Column, bool)> {
+        self.columns.iter().enumerate().map(|(idx, col)| (col, Some(idx) == self.selection))
     }
 }
 
-/// Constructor
 impl From<Vec<Column>> for Columns {
     fn from(columns: Vec<Column>) -> Self {
-        if columns.is_empty() {
-            panic!("Columns length invariant broken");
-        }
+        let selection = if columns.len() == 0 {
+            None
+        } else {
+            Some(0)
+        };
 
         Self {
             columns,
             capacity:  Self::DEFAULT_CAPACITY,
-            selection: 0
+            selection
         }
     }
 }
 
-/// Constructor
 impl Default for Columns {
     fn default() -> Self {
+        let columns = vec![
+            Column::from(ColumnID::PID),
+            Column::from(ColumnID::Name), 
+            Column::from(ColumnID::CPU(CPUUnitOptions::Avg)), 
+            Column::from(ColumnID::Mem(MemUnitOptions::B))];
+        
+        let selection = if columns.len() == 0 {
+            None
+        } else {
+            Some(0)
+        };
+
         Self {
-            columns:
-                vec![Column::from(ColumnID::PID),
-                Column::from(ColumnID::Name), 
-                Column::from(ColumnID::CPU(CPUUnitOptions::Avg)), 
-                Column::from(ColumnID::Mem(MemUnitOptions::B))],
-            capacity:  Self::DEFAULT_CAPACITY,
-            selection: 0
+            columns,
+            capacity: Self::DEFAULT_CAPACITY,
+            selection
         }
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::{ColumnID, Column, ColumnEvent, Columns, CPUUnitOptions, Direction};
+
+    #[test]
+    fn test_event() {
+        let mut columns: Columns = Columns::default();
+        assert!(columns.selection == Some(0));
+        assert!(columns.get_count() == columns.columns.len());
+        assert!(columns.get_count() == 4);
+
+        // BVA RemoveColumn
+        for _ in 0..(columns.get_count() + 1) {
+            columns.event(ColumnEvent::RemoveColumn);
+        }
+        assert!(columns.selection == None);
+        assert!(columns.get_count() == 0);
+
+        // BVA for InsertColumn
+        for _ in 0..(columns.capacity + 1) {
+            columns.event(ColumnEvent::InsertColumn(Column::from(ColumnID::CPU(CPUUnitOptions::Avg))));
+        }
+        assert!(columns.selection == Some(0));
+        assert!(columns.get_count() == columns.capacity);
+
+        // BVA MoveSelection
+        for _ in 0..(columns.get_count() + 1) {
+            columns.move_selection(Direction::Right);
+        }
+        assert!(columns.selection == Some(columns.get_count() - 1));
+        for _ in 0..(columns.get_count() + 1) {
+            columns.move_selection(Direction::Left);
+        }
+        assert!(columns.selection == Some(0));
     }
 }

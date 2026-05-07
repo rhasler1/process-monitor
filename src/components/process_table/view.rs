@@ -85,7 +85,8 @@ impl TableView {
                 Row::new(cells).style(style)
             }).collect::<Vec<_>>();
 
-        let col_width = 100 / table.cols_count();
+        // TODO [5/7] Add remainder to final col
+        let col_width = if table.cols_count() > 0 { 100 / table.cols_count() } else { 0 };
         let col_widths: Vec<Constraint> = table.cols_iter().map(|_| (Constraint::Percentage(col_width as u16))).collect();
         let table_render = Table::new(rows, col_widths).header(header);
 

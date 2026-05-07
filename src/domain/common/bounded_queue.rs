@@ -75,14 +75,14 @@ mod test {
     use std::ffi::OsString;
     #[test]
     fn test_bounded_queue_containing_snapshots() {
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 10 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
         let snapshot1 = ProcessSnapShot::new(vec![item1,item2,item3], 10 as i64);
 
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 6 as f32, 11 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 7 as f32, 12 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 8 as f32, 13 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 6 as f32, 6 as f32, 11 as u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 7 as f32, 7 as f32, 12 as u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 8 as f32, 8 as f32, 13 as u64);
         let snapshot2 = ProcessSnapShot::new(vec![item1,item2,item3], 10 as i64);
 
         let mut q = BoundedQueue::<ProcessSnapShot>::new(2);

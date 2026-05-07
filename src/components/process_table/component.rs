@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crate::components::process_table::table::{TableModel, TableEvent};
+use crate::components::process_table::table::TableModel;
 use crate::components::process_table::controller::TableController;
 use crate::domain::process::model::ProcessSnapShot;
 use crate::events::EventState;
@@ -12,8 +12,6 @@ pub enum Focus {
     TerminationComponent
 }
 
-// TODO [5/1/26] include a termination model here, maybe
-// a controller, view, and focus
 pub struct TableComponent {
     model:      TableModel,
     controller: TableController,
@@ -28,16 +26,6 @@ impl TableComponent {
             EventState::NotConsumed
         }
     }
-
-    // Special key event for terminating 
-    /*pub fn key_event_term(&self, key: Key) -> Option<u32> {
-        // Designating `T` as termination key
-        if matches!(key, Key::Char('T')) {
-            self.model.table_event_term()
-        } else {
-            None
-        }
-    }*/
 
     pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) {
         self.model.new_snapshot(snapshot);
