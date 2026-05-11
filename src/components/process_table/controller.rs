@@ -37,6 +37,7 @@ impl TableController {
             (Key::Char('m'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::InsertColumn(Column::from(ColumnID::Mem(MemUnitOptions::B))))),
             (Key::Backspace, TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::RemoveColumn)),
             (Key::Char('u'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::RotateUnit)),
+            (Key::Char('S'), TableFocus::Columns) => Some(TableEvent::OnCols(ColumnEvent::SaveColumnConfig)),
 
             // Filter
             (Key::Char(c),   TableFocus::Filter) => Some(TableEvent::OnFilter(TextLineEvent::InsertCharacter(c))),

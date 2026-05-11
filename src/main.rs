@@ -1,5 +1,6 @@
 // Internal project imports
 use process_monitor::app::App;
+use process_monitor::config::config::Config;
 use process_monitor::events::app_event::{AppEvent, AppEvents};
 use process_monitor::adapters::crossterm::input::Key;
 use process_monitor::services::sysinfo_worker::{SysinfoWorker, CallerMessage, WorkerMessage};
@@ -26,8 +27,11 @@ fn main() -> anyhow::Result<()> {
     terminal.clear()?;
     info!("Terminal setup complete");
 
+    // Create config
+    let config = Config::default();
+
     // Create App
-    let mut app = App::default();
+    let mut app = App::new(&config);
     // Create AppEvents MPSC channel
     let app_events = AppEvents::default();
     // Create sysinfo worker
@@ -85,9 +89,9 @@ fn main() -> anyhow::Result<()> {
         match app_events.next()? {
             AppEvent::Key(key) => {
                 let event_state = app.key_event(key);
-                if event_state.is_return_payload() {
+                if event_state.is_return_pid() {
                     // safe to unwrap here
-                    let pid = event_state.payload().unwrap();
+                    let pid = event_state.pid().unwrap();
                     match sysinfo_worker.try_send(CallerMessage::TerminateProcess(pid)) {
                         Ok(_) => { continue }
                         Err(try_send_err) => {

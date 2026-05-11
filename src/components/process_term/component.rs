@@ -23,7 +23,7 @@ impl Model {
         match event {
             Event::Confirm => {
                 if let Some(pid) = self.pid {
-                    EventState::ReturnPayload(pid)
+                    EventState::ReturnPID(pid)
                 } else {
                     EventState::Consumed
                 }

@@ -69,7 +69,7 @@ impl Rows {
             }
             RowsEvent::TerminateSelection => {
                 if let Some(pid) = self.get_selected_value() {
-                    return EventState::ReturnPayload(pid)
+                    return EventState::ReturnPID(pid)
                 }
             }
         }

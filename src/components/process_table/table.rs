@@ -1,9 +1,9 @@
 use crate::components::process_table::row::{Row, Rows, RowsEvent};
 use crate::components::process_table::column::{Column, Columns, ColumnEvent};
 use crate::components::text_line::model::{TextLineModel, TextLineEvent};
+use crate::config::config::Config;
 use crate::domain::process::model::ProcessSnapShot;
 use crate::events::EventState;
-// A model receives an action and does something with it
 
 #[derive(Clone, PartialEq)]
 pub enum TableFocus {
@@ -28,17 +28,27 @@ pub struct TableModel {
 }
 
 impl TableModel {
+    pub fn new(snapshot: &ProcessSnapShot, config: &Config) -> Self {
+        Self {
+            rows:    Rows::from(snapshot),
+            columns: Columns::from(config),
+            filter:  TextLineModel::default(),
+            focus:   TableFocus::Rows
+        }
+    }
+
     pub fn table_event(&mut self, event: TableEvent) -> EventState {
         match event {
             TableEvent::MoveFocus(table_focus) => {
                 self.focus = table_focus;
             }
             TableEvent::OnRows(row_event) => {
-                // `row_event` may return EventState::ConsumedWithReturnPayload(pid)
+                // `row_event` may return EventState::ReturnPID(pid)
                 return self.rows.row_event(row_event);
             }
             TableEvent::OnCols(col_event) => {
-                self.columns.event(col_event);
+                // `col_event` may return EventState::ReturnColumns
+                return self.columns.event(col_event);
             }
             TableEvent::OnFilter(filter_event) => {
                 self.filter.handle_event(filter_event);

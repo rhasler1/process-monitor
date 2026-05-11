@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crate::components::process_table::table::TableModel;
+use crate::{components::process_table::table::TableModel, config::config::Config};
 use crate::components::process_table::controller::TableController;
 use crate::domain::process::model::ProcessSnapShot;
 use crate::events::EventState;
@@ -19,6 +19,14 @@ pub struct TableComponent {
 }
 
 impl TableComponent {
+    pub fn new(snapshot: &ProcessSnapShot, config: &Config) -> Self {
+        Self {
+            model:      TableModel::new(snapshot, config),
+            controller: TableController::default(),
+            view:       TableView::default()
+        }
+    }
+
     pub fn key_event(&mut self, key: Key) -> EventState {
         if let Some(event) = self.controller.key_event(key, &self.model) {
             self.model.table_event(event)

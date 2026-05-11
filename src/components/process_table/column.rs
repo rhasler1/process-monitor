@@ -1,4 +1,8 @@
-#[derive(PartialEq)]
+use log::debug;
+use serde::{Deserialize, Serialize};
+use crate::{config::config::{Config, write_config}, events::EventState};
+
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum MemUnitOptions {
     B,
     KB,
@@ -17,7 +21,7 @@ impl MemUnitOptions {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum CPUUnitOptions {
     Avg,
     Tot
@@ -32,7 +36,7 @@ impl CPUUnitOptions {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum ColumnID {
     PID,
     Name,
@@ -51,6 +55,7 @@ impl ColumnID {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Column {
     pub id:  ColumnID,
 }
@@ -76,35 +81,56 @@ pub enum ColumnEvent {
     MoveSelection(Direction),
     InsertColumn(Column),
     RemoveColumn,
-    RotateUnit
+    RotateUnit,
+    SaveColumnConfig
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Columns {
     columns:   Vec<Column>,
-    // capacity: max column count
-    capacity:  usize,
+    #[serde(skip)]
+    capacity: usize,
+    #[serde(skip)]
     selection: Option<usize>
 }
 
 impl Columns {
     pub const DEFAULT_CAPACITY: usize = 10;
 
-    pub fn event(&mut self, event: ColumnEvent) {
+    pub fn event(&mut self, event: ColumnEvent) -> EventState {
+        // TODO REMOVE
+        let selection = self.selection;
+        let capacity = self.capacity;
+        debug!("`Columns` selection = {selection:?}\n capacity = {capacity:?}\n");
+
         match event {
             ColumnEvent::MoveSelection(Direction::Left) => {
                 self.move_selection(Direction::Left);
+                EventState::Consumed
             }
             ColumnEvent::MoveSelection(Direction::Right) => {
                 self.move_selection(Direction::Right);
+                EventState::Consumed
             }
             ColumnEvent::InsertColumn(col) => {
                 self.insert_col(col);
+                EventState::Consumed
             }
             ColumnEvent::RemoveColumn => {
                 self.remove_col();
+                EventState::Consumed
             }
             ColumnEvent::RotateUnit => {
                 self.rotate_unit();
+                EventState::Consumed
+            }
+            ColumnEvent::SaveColumnConfig => {
+                let config: String = self.serialize_columns();
+                // TODO remove next 2 lines after testing
+                let _ = write_config(config);
+                EventState::Consumed
+                // TODO implement
+                //EventState::ReturnColumns(config)
             }
         }
     }
@@ -135,7 +161,7 @@ impl Columns {
  
     fn insert_col(&mut self, col: Column) {
         let col_count = self.columns.len();
-        
+
         if col_count < self.capacity {
             let insert_pos = 
                 if let Some(selection) = self.selection {
@@ -194,21 +220,27 @@ impl Columns {
     pub fn iter(&self) -> impl Iterator<Item = (&Column, bool)> {
         self.columns.iter().enumerate().map(|(idx, col)| (col, Some(idx) == self.selection))
     }
+
+    // TODO: This can panic, handle gracefully.
+    // return EventState w/ string payload
+    pub fn serialize_columns(&self) -> String {
+        toml::to_string(&self).unwrap()
+    }
 }
 
-impl From<Vec<Column>> for Columns {
-    fn from(columns: Vec<Column>) -> Self {
-        let selection = if columns.len() == 0 {
+impl From<&Config> for Columns {
+    fn from(config: &Config) -> Self {
+        let mut columns: Columns = toml::from_str(config.get_contents()).unwrap_or_default();
+        
+        columns.capacity  = Self::DEFAULT_CAPACITY;
+        
+        columns.selection = if columns.columns.len() == 0 {
             None
         } else {
             Some(0)
         };
 
-        Self {
-            columns,
-            capacity:  Self::DEFAULT_CAPACITY,
-            selection
-        }
+        columns
     }
 }
 
