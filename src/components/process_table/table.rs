@@ -37,14 +37,14 @@ impl TableModel {
         }
     }
 
-    pub fn table_event(&mut self, event: TableEvent) -> EventState {
+    pub fn event(&mut self, event: TableEvent) -> EventState {
         match event {
             TableEvent::MoveFocus(table_focus) => {
                 self.focus = table_focus;
             }
             TableEvent::OnRows(row_event) => {
                 // `row_event` may return EventState::ReturnPID(pid)
-                return self.rows.row_event(row_event);
+                return self.rows.event(row_event);
             }
             TableEvent::OnCols(col_event) => {
                 // `col_event` may return EventState::ReturnColumns
@@ -59,20 +59,10 @@ impl TableModel {
         EventState::Consumed
     }
 
-    /*pub fn table_event_term(&self) -> Option<u32> {
-        if matches!(self.focus, TableFocus::Rows) {
-            self.rows.row_event_term()
-        }
-        else {
-            None
-        }
-    }*/
-
     pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) {
         let new_rows = Vec::<Row>::from(snapshot);
         self.rows.replace_rows(new_rows);
     }
-
 
     pub fn focus(&self) -> TableFocus {
         self.focus.clone()
@@ -80,7 +70,7 @@ impl TableModel {
 
     // Row methods
     pub fn rows_iter(&self) -> impl Iterator<Item = (&Row, bool)> {
-        self.rows.iter()
+        self.rows.iter_filter_and_sort()
     }
 
     pub fn row_selection(&self) -> Option<usize> {

@@ -5,7 +5,7 @@ use directories::ProjectDirs;
 
 //#[derive(Default)]
 pub struct Config {
-    contents: String
+    columns_config: String
 }
 
 impl Default for Config {
@@ -14,19 +14,23 @@ impl Default for Config {
         match config {
             Ok(s)  => { 
                 debug!("Creating `Config` with {s}");
-                Config { contents: s }
+                Config { columns_config: s }
             }
             Err(_) => {
                 debug!("Creating `Config` with default parameters");
-                Config { contents: String::new() }
+                Config { columns_config: String::new() }
             }
         }
     }
 }
 
+// TODO [5/12]
+// - Build directory `process-monitor` inside of config_dir if it does not already exist
+// - Multiple config files: columns_config.toml & config.toml (Key config, refresh rate, etc.)
+
 impl Config {
-    pub fn get_contents(&self) -> &str {
-        &self.contents
+    pub fn get_columns_config(&self) -> &str {
+        &self.columns_config
     }
 }
 

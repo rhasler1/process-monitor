@@ -10,8 +10,10 @@ TODO [3/2/26]
 use std::ffi::{OsString, OsStr};
 use std::borrow::Cow;
 
+use serde::{Deserialize, Serialize};
+
 /// Represents a single system process
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct ProcessItem {
     /// [pid](ProcessItem::pid) is a unique process identifier
     pid:             u32,
@@ -68,6 +70,10 @@ impl ProcessItem {
     pub fn mem_usage(&self) -> u64 {
         self.mem_usage
     }
+
+    /*pub fn serialize(&self) -> String {
+        toml::to_string(&self).unwrap()
+    }*/
 }
 
 impl PartialEq for ProcessItem {

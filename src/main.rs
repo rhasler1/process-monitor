@@ -1,6 +1,7 @@
 // Internal project imports
 use process_monitor::app::App;
 use process_monitor::config::config::Config;
+use process_monitor::domain::process::model::ProcessSnapShot;
 use process_monitor::events::app_event::{AppEvent, AppEvents};
 use process_monitor::adapters::crossterm::input::Key;
 use process_monitor::services::sysinfo_worker::{SysinfoWorker, CallerMessage, WorkerMessage};
@@ -47,6 +48,16 @@ fn main() -> anyhow::Result<()> {
     match sysinfo_worker.next()? {
         WorkerMessage::Done(process_snapshot) => {
             debug!("`Main` received domain model from `worker`");
+            /*// TODO Remove this
+            let data_string = process_snapshot.serialize();
+            info!("\nSERIALIZED PROC DATA\n{data_string}\n\n");
+            let data_struct: ProcessSnapShot = ProcessSnapShot::deserialize(&data_string);
+            let time_stamp = data_struct.ts();
+            let count = data_struct.count();
+            let first_proc_name = data_struct.iter().find(|item| item.pid() == 1);
+            let first_proc_name = first_proc_name.unwrap().name().to_string_lossy();
+            info!("\nChecking data_struct:\nts = {time_stamp}\n count = {count}\n name = {first_proc_name}");
+            // End*/
             app.model_update(process_snapshot);
         }
         WorkerMessage::DoneTerminateProcess => {

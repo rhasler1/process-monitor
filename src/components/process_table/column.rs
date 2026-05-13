@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use crate::{config::config::{Config, write_config}, events::EventState};
 
@@ -98,10 +98,10 @@ impl Columns {
     pub const DEFAULT_CAPACITY: usize = 10;
 
     pub fn event(&mut self, event: ColumnEvent) -> EventState {
-        // TODO REMOVE
+        /*// TODO REMOVE
         let selection = self.selection;
         let capacity = self.capacity;
-        debug!("`Columns` selection = {selection:?}\n capacity = {capacity:?}\n");
+        debug!("`Columns` selection = {selection:?}\n capacity = {capacity:?}\n");*/
 
         match event {
             ColumnEvent::MoveSelection(Direction::Left) => {
@@ -125,12 +125,13 @@ impl Columns {
                 EventState::Consumed
             }
             ColumnEvent::SaveColumnConfig => {
+                // TODO propagate config string to main and do IO on separate thread
                 let config: String = self.serialize_columns();
-                // TODO remove next 2 lines after testing
-                let _ = write_config(config);
+                match write_config(config) {
+                    Ok(_) => {}
+                    Err(e) => { error!("`Columns:` event: error: {e} when writing column config") }
+                }
                 EventState::Consumed
-                // TODO implement
-                //EventState::ReturnColumns(config)
             }
         }
     }
@@ -213,24 +214,18 @@ impl Columns {
         self.columns.len()
     }
 
-    /*pub fn get_selection(&self) -> Option<usize> {
-        self.selection
-    }*/
-
     pub fn iter(&self) -> impl Iterator<Item = (&Column, bool)> {
         self.columns.iter().enumerate().map(|(idx, col)| (col, Some(idx) == self.selection))
     }
 
-    // TODO: This can panic, handle gracefully.
-    // return EventState w/ string payload
     pub fn serialize_columns(&self) -> String {
-        toml::to_string(&self).unwrap()
+        toml::to_string(&self).unwrap_or_default()
     }
 }
 
 impl From<&Config> for Columns {
     fn from(config: &Config) -> Self {
-        let mut columns: Columns = toml::from_str(config.get_contents()).unwrap_or_default();
+        let mut columns: Columns = toml::from_str(config.get_columns_config()).unwrap_or_default();
         
         columns.capacity  = Self::DEFAULT_CAPACITY;
         

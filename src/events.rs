@@ -1,6 +1,6 @@
 pub mod app_event;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum EventState {
     Consumed,
     ReturnPID(u32),

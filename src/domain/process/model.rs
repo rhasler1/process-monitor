@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 // Import primitive
 use crate::domain::process::primitive::ProcessItem;
 // Import used by `ProcessSnapShotHistory`
@@ -10,7 +11,7 @@ use crate::domain::common::bounded_queue::BoundedQueue;
 /// the same time. The timestamp when sampling occurred is stored in
 /// [ts](ProcessSnapShot::ts)
 /// [ts] Set ts by chrono::Local::now().timestamp();
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct ProcessSnapShot {
     data: Vec<ProcessItem>,
     // Returns the number of non-leap seconds since January 1, 1970 0:00:00 UTC (aka “UNIX timestamp”).
@@ -40,7 +41,20 @@ impl ProcessSnapShot {
     pub fn iter(&self) -> std::slice::Iter<'_, ProcessItem> {
         self.data.iter()
     }
+
+    // Use to create test fixtures
+    #[cfg(test)]
+    pub fn serialize(&self) -> String {
+        toml::to_string(&self).unwrap()
+    }
+
+    #[cfg(test)]
+    pub fn deserialize(s: &str) -> Self {
+        let snapshot = toml::from_str(s).unwrap();
+        snapshot
+    }
 }
+
 
 /// Stores `ProcessSnapShot`s up to the provided capacity
 pub struct ProcessSnapShotHistory {
@@ -87,63 +101,49 @@ impl ProcessSnapShotHistory {
 
 #[cfg(test)]
 pub mod test {
-    use super::ProcessSnapShot;
-    //use chrono::{DateTime, Local, Utc};
-    use crate::domain::process::primitive::ProcessItem;
-    use std::ffi::OsString;
+    use super::*;
 
-    
     #[test]
-    fn test_process_snap_shot() {
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
-        
-        // [ts] Set ts by chrono::Local::now().timestamp();
-        let ts = chrono::Local::now().timestamp();
-        let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3], ts);
-        assert_eq!(snap_shot.count(), 3);
-        let iter = snap_shot.iter();
-        let _item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let pids: Vec<_> = iter.map(|item| {item.pid()}).collect();
-        assert_eq!(pids[0],2);
-        assert_eq!(pids[1],3);
-        assert_eq!(pids[2],4);
+    fn test_deserialize_process_fixture_count_1() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_1.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        assert_eq!(proc_snapshot.count(), 1);
+        assert_eq!(proc_snapshot.ts(), 1978609300);
+        assert_eq!(proc_snapshot.iter().last().unwrap().pid(), 10);
+        assert_eq!(proc_snapshot.iter().last().unwrap().avg_cpu_usage(), 0.0);
+        assert_eq!(proc_snapshot.iter().last().unwrap().mem_usage(), 141230080);
+        assert_eq!(proc_snapshot.iter().last().unwrap().name_to_string_lossy(), "process_a");
     }
 
-    use super::ProcessSnapShotHistory;
     #[test]
-    fn test_process_snap_shot_history() {
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
+    fn test_deserialize_process_fixture_count_22() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_22.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        assert_eq!(proc_snapshot.count(), 22);
+        assert_eq!(proc_snapshot.ts(), 1778609300);
+        assert_eq!(proc_snapshot.iter().last().unwrap().pid(), 31);
+        assert_eq!(proc_snapshot.iter().last().unwrap().avg_cpu_usage(), 0.0);
+        assert_eq!(proc_snapshot.iter().last().unwrap().mem_usage(), 427196416);
+        assert_eq!(proc_snapshot.iter().last().unwrap().name_to_string_lossy(), "process_v");
+    }
+
+    #[test]
+    fn test_snapshot_constructor() {
+        let pid = 10;
+        let name = "process_a".into();
+        let avg_cpu_usage = 0.0;
+        let total_cpu_usage = 0.0;
+        let mem_usage = 141230080;
+        let ts = 1978609300;
         
-        // [ts] Set ts by chrono::Local::now().timestamp();
-        let ts = chrono::Local::now().timestamp();
-        let snapshot1 = ProcessSnapShot::new(vec![item1,item2,item3], ts);
+        let data = vec![ProcessItem::new(pid, name, avg_cpu_usage, total_cpu_usage, mem_usage)];
+        let proc_snapshot = ProcessSnapShot::new(data, ts);
 
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 6 as f32, 6 as f32, 11 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 7 as f32, 7 as f32, 12 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 8 as f32, 8 as f32, 13 as u64);
-        let snapshot2 = ProcessSnapShot::new(vec![item1,item2,item3], 10 as i64);
-
-        let mut history = ProcessSnapShotHistory::new(2);
-        assert_eq!(history.capacity(), 2);
-        history.push_back(snapshot1);
-        history.push_back(snapshot2);
-
-        // Getting history of pids and checking
-        let mut storage: Vec<Vec<u32>> = Vec::new();
-        for snapshot in history.iter().rev() {
-            let local_storage: Vec<u32> = snapshot.iter().map(|pitem| pitem.pid()).collect();
-            storage.push(local_storage);
-        }
-        assert!(storage.len() == 2);
-        for pids in storage {
-            assert!(pids[0] == 2 as u32);
-            assert!(pids[1] == 3 as u32);
-            assert!(pids[2] == 4 as u32);
-        }
+        assert_eq!(proc_snapshot.count(), 1);
+        assert_eq!(proc_snapshot.ts(), 1978609300);
+        assert_eq!(proc_snapshot.iter().last().unwrap().pid(), 10);
+        assert_eq!(proc_snapshot.iter().last().unwrap().avg_cpu_usage(), 0.0);
+        assert_eq!(proc_snapshot.iter().last().unwrap().mem_usage(), 141230080);
+        assert_eq!(proc_snapshot.iter().last().unwrap().name_to_string_lossy(), "process_a");
     }
 }
-

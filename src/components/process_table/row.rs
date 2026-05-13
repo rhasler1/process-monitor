@@ -2,13 +2,68 @@ use crate::domain::process::primitive::ProcessItem;
 use crate::domain::process::model::ProcessSnapShot;
 use crate::events::EventState;
 
-#[derive(Clone, PartialEq)]
+pub struct Row {
+    pub pid:             u32,
+    pub name:            String,
+    pub avg_cpu_usage:   f32,
+    pub total_cpu_usage: f32,
+    pub mem_usage:       u64
+}
+
+impl From<&ProcessItem> for Row {
+    fn from(item: &ProcessItem) -> Self {
+        Self {
+            pid:             item.pid(),
+            name:            item.name_to_string_lossy().to_string(),
+            avg_cpu_usage:   item.avg_cpu_usage(),
+            total_cpu_usage: item.total_cpu_usage(),
+            mem_usage:       item.mem_usage()
+        }
+    }
+}
+
+impl Row {
+    fn filter(&self, filter: &str) -> bool {
+        self.name.to_lowercase().contains(&filter.to_lowercase())
+    }
+
+    pub fn order(&self, other: &Self, order: &RowOrder) -> std::cmp::Ordering {
+        match order {
+            RowOrder::PIDDec  =>  other.pid.cmp(&self.pid),
+            RowOrder::PIDInc  =>  self.pid.cmp(&other.pid),
+            RowOrder::NameDec => other.name.cmp(&self.name),
+            RowOrder::NameInc => self.name.cmp(&other.name),
+            RowOrder::CPUDec  =>  other.total_cpu_usage.partial_cmp(&self.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
+            RowOrder::CPUInc  =>  self.total_cpu_usage.partial_cmp(&other.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
+            RowOrder::MemDec  =>  other.mem_usage.cmp(&self.mem_usage),
+            RowOrder::MemInc  =>  self.mem_usage.cmp(&other.mem_usage)
+        }
+    }
+
+    pub fn mem_usage_as_b(&self) -> u64 {
+        self.mem_usage
+    }
+    
+    pub fn mem_usage_as_kb(&self) -> u64 {
+        self.mem_usage / 1024
+    }
+
+    pub fn mem_usage_as_mb(&self) -> u64 {
+        self.mem_usage / 1048576
+    }
+
+    pub fn mem_usage_as_gb(&self) -> u64 {
+        self.mem_usage / 1073741824
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub enum Direction {
     Up,
     Down
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum RowOrder {
     PIDDec,
     PIDInc,
@@ -20,7 +75,7 @@ pub enum RowOrder {
     MemInc
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum RowsEvent {
     MoveSelection(Direction),
     TerminateSelection,
@@ -35,7 +90,7 @@ pub struct Rows {
 }
 
 impl Rows {
-    pub fn row_event(&mut self, event: RowsEvent) -> EventState {
+    pub fn event(&mut self, event: RowsEvent) -> EventState {
         match event {
             RowsEvent::MoveSelection(Direction::Up) => {
                 self.move_selection(Direction::Up)
@@ -76,10 +131,6 @@ impl Rows {
         EventState::Consumed
     }
 
-    /*pub fn row_event_term(&self) -> Option<u32> {
-        self.get_selected_value()
-    }*/
-
     fn move_selection(&mut self, dir: Direction) {
         if let Some(selection) = self.selection {
             match dir {
@@ -117,17 +168,16 @@ impl Rows {
         None
     }
 
-    /// Returns iterator over visible rows after applying filter
-    /// and sorting. The Iterator Item includes a Row reference and
-    /// a flag indicating if the row is the selected row
-    pub fn iter(&self) -> impl Iterator<Item = (&Row, bool)> {
-        // Turn the vector returned by visible() into an iterator that references &Row
-        // Note: into_iter() consumes the collection returned by visible();
+    /// Returns iterator over filtered & sorted rows. The Iterator 
+    /// Item includes a Row reference and a flag indicating if the row is the selected row
+    pub fn iter_filter_and_sort(&self) -> impl Iterator<Item = (&Row, bool)> {
+        // Turn the vector returned by filter_and_sort_indices() into an iterator that references &Row
+        // Note: into_iter() consumes the collection returned by filter_and_sort_indices();
         // rendering the collection unusable afterwards
         self.filter_and_sort_indices().into_iter().enumerate().map(|(idx, visible_value)| (&self.rows[visible_value], Some(idx) == self.selection))
     }
    
-    /// Return indices of visible rows after applying filter and sorting
+    /// Return row indices after applying filter and sort
     fn filter_and_sort_indices(&self) -> Vec<usize> {
         let mut indices: Vec<usize> = (0..self.rows.len()).collect();
         
@@ -156,7 +206,12 @@ impl Rows {
     pub fn get_selection(&self) -> Option<usize> {
         self.selection
     }
+
+    pub fn get_row_count_after_filter(&self) -> usize {
+        self.filter_and_sort_indices().len()
+    }
 }
+
 
 /// Create inner rows data
 impl From<&ProcessSnapShot> for Vec<Row> {
@@ -168,7 +223,6 @@ impl From<&ProcessSnapShot> for Vec<Row> {
 
 /// Create Rows structure
 impl From<&ProcessSnapShot> for Rows {
-    // Transfer ownership
     fn from(snapshot: &ProcessSnapShot) -> Self {
        let rows: Vec<Row> = snapshot.iter().map(|item| Row::from(item)).collect();
        let selection = if rows.len() > 0 {
@@ -186,118 +240,117 @@ impl From<&ProcessSnapShot> for Rows {
     }
 }
 
-pub struct Row {
-    pub pid:             u32,
-    pub name:            String,
-    pub avg_cpu_usage:   f32,
-    pub total_cpu_usage: f32,
-    pub mem_usage:       u64      // From ProcessSnapShot memory usage is in bytes
-}
-
-impl From<&ProcessItem> for Row {
-    fn from(item: &ProcessItem) -> Self {
-        Self {
-            pid:             item.pid(),
-            name:            item.name_to_string_lossy().to_string(),
-            avg_cpu_usage:   item.avg_cpu_usage(),
-            total_cpu_usage: item.total_cpu_usage(),
-            mem_usage:       item.mem_usage()
-        }
-    }
-}
-
-impl Row {
-    // TODO: Add more filtering options
-    fn filter(&self, filter: &str) -> bool {
-        self.name.to_lowercase().contains(&filter.to_lowercase())
-    }
-
-    pub fn order(&self, other: &Self, order: &RowOrder) -> std::cmp::Ordering {
-        match order {
-            RowOrder::PIDDec =>  other.pid.cmp(&self.pid),
-            RowOrder::PIDInc =>  self.pid.cmp(&other.pid),
-            RowOrder::NameDec => other.name.cmp(&self.name),
-            RowOrder::NameInc => self.name.cmp(&other.name),
-            RowOrder::CPUDec =>  other.total_cpu_usage.partial_cmp(&self.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
-            RowOrder::CPUInc =>  self.total_cpu_usage.partial_cmp(&other.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
-            RowOrder::MemDec =>  other.mem_usage.cmp(&self.mem_usage),
-            RowOrder::MemInc =>  self.mem_usage.cmp(&other.mem_usage)
-        }
-    }
-
-    pub fn mem_usage_as_b(&self) -> u64 {
-        self.mem_usage
-    }
-    
-    pub fn mem_usage_as_kb(&self) -> u64 {
-        self.mem_usage / 1024
-    }
-
-    pub fn mem_usage_as_mb(&self) -> u64 {
-        self.mem_usage / 1048576
-    }
-
-    pub fn mem_usage_as_gb(&self) -> u64 {
-        self.mem_usage / 1073741824
-    }
-}
-
 #[cfg(test)]
 pub mod test {
-    use super::{Row, Rows, Direction};
-    use crate::domain::process::primitive::ProcessItem;
-    use std::ffi::OsString;
+    use super::*;
+    use crate::events::EventState;
     use crate::domain::process::model::ProcessSnapShot;
 
     #[test]
-    fn test_row_model_selection() {
-        // Creating ProcessSnapShot to create Rows from
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
-        let ts = chrono::Local::now().timestamp();
-        let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3], ts);
+    fn test_enforce_invariant_on_selection() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_22.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let mut rows = Rows::from(&proc_snapshot);
+        let count = rows.get_row_count_after_filter();
 
-        // Attempt to move selection out of bounds
-        let mut rows = Rows::from(&snap_shot);
-        for _i in 0..10 {
-            rows.move_selection(Direction::Down);
+        // BVA set rows selection past upper bound
+        rows.selection = Some(count);
+        rows.enforce_invariant_on_selection();
+        assert_eq!(rows.selection, Some(count - 1));
+
+        // BVA set rows selection "below" lower bound
+        rows.selection = None;
+        rows.enforce_invariant_on_selection();
+        assert_eq!(rows.selection, Some(0));
+    }
+
+    #[test]
+    fn test_event_move_selection() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_22.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let mut rows = Rows::from(&proc_snapshot);
+        let count = rows.get_row_count_after_filter();
+
+        // BVA attempt to move selection past the lower bound
+        for _ in 0..(count + 1) {
+            assert_eq!(rows.event(RowsEvent::MoveSelection(Direction::Up)), EventState::Consumed);
         }
-        assert!(rows.selection == Some(2));
-        for _i in 0..10 {
-            rows.move_selection(Direction::Up);
+        assert_eq!(rows.get_selection(), Some(0));
+
+        // BVA attempt to move selection past the upper bound
+        for _ in 0..(count + 1) {
+            assert_eq!(rows.event(RowsEvent::MoveSelection(Direction::Down)), EventState::Consumed);
         }
-        assert!(rows.selection == Some(0));
+        assert_eq!(rows.get_selection(), Some(count - 1));
+    }
 
-        // Snapshot increase in size
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
-        let item4 = ProcessItem::new(5, OsString::from("ps"), 5 as f32, 5 as f32, 10 as u64);
-        let ts = chrono::Local::now().timestamp();
-        let snap_shot = ProcessSnapShot::new(vec![item1,item2,item3,item4], ts);
-        let new_rows: Vec<Row> = Vec::<Row>::from(&snap_shot);
-        rows.replace_rows(new_rows);
+    #[test]
+    fn test_event_sort() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_22.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let mut rows = Rows::from(&proc_snapshot);
 
-        assert!(rows.selection == Some(0));
-        for _i in 0..10 {
-            rows.move_selection(Direction::Down);
-        }
-        assert!(rows.selection == Some(3));
+        // Sort PID inc
+        assert_eq!(rows.event(RowsEvent::Sort(RowOrder::PIDInc)), EventState::Consumed);
+        let smallest_pid = rows.iter_filter_and_sort().next().unwrap().0.pid;
+        let greatest_pid = rows.iter_filter_and_sort().last().unwrap().0.pid;
+        assert!(smallest_pid < greatest_pid);
 
-        // Snapshot decrease in size
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let ts = chrono::Local::now().timestamp();
-        let snap_shot = ProcessSnapShot::new(vec![item1,item2], ts);
-        let new_rows: Vec<Row> = Vec::<Row>::from(&snap_shot);
-        rows.replace_rows(new_rows);
-        assert!(rows.selection == Some(1));
+        // Sort PID dec
+        assert_eq!(rows.event(RowsEvent::Sort(RowOrder::PIDDec)), EventState::Consumed);
+        assert_eq!(rows.iter_filter_and_sort().next().unwrap().0.pid, greatest_pid);
+        assert_eq!(rows.iter_filter_and_sort().last().unwrap().0.pid, smallest_pid);
+    }
+
+    #[test]
+    fn test_event_terminate_selection() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_22.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let mut rows = Rows::from(&proc_snapshot);
+        let pid = rows.iter_filter_and_sort().next().unwrap().0.pid;
+        assert_eq!(rows.event(RowsEvent::TerminateSelection), EventState::ReturnPID(pid));
+    }
+
+    #[test]
+    fn test_replace_rows() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_22.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let mut rows = Rows::from(&proc_snapshot);
         
-        // Snapshot empty
-        let snap_shot = ProcessSnapShot::new(vec![], ts);
-        let new_rows: Vec<Row> = Vec::<Row>::from(&snap_shot);
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_0.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let new_rows = Vec::<Row>::from(&proc_snapshot);
+        let count = new_rows.iter().count();
         rows.replace_rows(new_rows);
-        assert!(rows.selection == None);
+        assert_eq!(rows.rows.iter().count(), count);
+        assert_eq!(rows.get_selection(), None);
+
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_1.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let new_rows = Vec::<Row>::from(&proc_snapshot);
+        let count = new_rows.iter().count();
+
+        rows.replace_rows(new_rows);
+        assert_eq!(rows.rows.iter().count(), count);
+        assert_eq!(rows.get_selection(), Some(0));
+    }
+
+    #[test]
+    fn test_filter_rows() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_22.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let mut rows = Rows::from(&proc_snapshot);
+        rows.set_filter("process_a");
+        for row in rows.iter_filter_and_sort() {
+            assert_eq!(row.0.name, "process_a");
+        }
+    }
+
+    #[test]
+    fn test_get_row_count_after_filter() {
+        let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_22.toml");
+        let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
+        let rows = Rows::from(&proc_snapshot);
+        assert_eq!(rows.get_row_count_after_filter(), 22);
     }
 }

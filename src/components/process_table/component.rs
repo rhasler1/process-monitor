@@ -29,7 +29,7 @@ impl TableComponent {
 
     pub fn key_event(&mut self, key: Key) -> EventState {
         if let Some(event) = self.controller.key_event(key, &self.model) {
-            self.model.table_event(event)
+            self.model.event(event)
         } else {
             EventState::NotConsumed
         }
