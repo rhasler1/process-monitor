@@ -37,11 +37,11 @@ impl SysinfoWorker {
         // can receive multiple tasks, requiring a queue. The channel does
         // not need to be large, in a use case, at most, the channel contains
         // 1 BuildProcessSnapShot and 1 TerminateProcess(u32) message.
-        const CHANNEL_SIZE: usize = 2;
+        const CHANNEL_CAPACITY: usize = 2;
         // This channel is used for communication from `main` thread to `worker` thread
-        let (to_caller_tx, from_worker_rx) = sync_channel(CHANNEL_SIZE);
+        let (to_caller_tx, from_worker_rx) = sync_channel(CHANNEL_CAPACITY);
         // This channel is used for communication from `worker` thread to `main` thread 
-        let (to_worker_tx, from_caller_rx) = sync_channel(CHANNEL_SIZE);
+        let (to_worker_tx, from_caller_rx) = sync_channel(CHANNEL_CAPACITY);
 
         let mut data_source = SysinfoDataSource::default();
 
@@ -127,15 +127,15 @@ impl SysinfoWorker {
 
 #[cfg(test)]
 pub mod test {
+    use super::*;
     use std::sync::mpsc;
-    use super::{CallerMessage,WorkerMessage,SysinfoWorker};    
 
     #[test]
     fn test_sysinfo_worker() {
         let worker = SysinfoWorker::default();
         let _ = worker.send(CallerMessage::BuildProcessSnapShot);
 
-        let give_worker_time = std::time::Duration::from_millis(10);
+        let give_worker_time = std::time::Duration::from_millis(100);
         std::thread::sleep(give_worker_time);
 
         let message = worker.try_next();
