@@ -225,7 +225,12 @@ impl Columns {
 
 impl From<&Config> for Columns {
     fn from(config: &Config) -> Self {
-        let mut columns: Columns = toml::from_str(config.get_columns_config()).unwrap_or_default();
+        let mut columns = 
+        if let Some(col_config) = config.get_columns_config() {
+            toml::from_str(col_config).unwrap_or_default()
+        } else {
+            Columns::default()
+        };
         
         columns.capacity  = Self::DEFAULT_CAPACITY;
         
