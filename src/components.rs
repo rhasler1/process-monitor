@@ -6,34 +6,23 @@
 // When the `App` receives a new `DomainModel` or a mutation occurs it is must call the handle_model_update() handler
 // on all Components that depend on that `DomainModel`. As such all `Components` must implement the trait on_model_update().
 
-// Make component modules visible ouside parent
+// Make component modules visible
 pub mod process_table;
 pub mod process_term;
 pub mod text_line;
 pub mod utils;
 
-// Internal project imports
 use crate::adapters::crossterm::input::Key;
 use crate::events::EventState;
-//use crate::domain::DomainModel;
-// Ratatui for drawing
 use ratatui::prelude::*;
-// Anyhow for return values
 use anyhow::Result;
 
-// All components dependant on a `DomainModel` must implement this trait
-//pub trait DomainModelComponent {
-    // Each component picks a DomainModel type
-//    type Model: DomainModel;
-//    fn on_model_update(&mut self, model: &Self::Model);
-//}
-
-/// All components that can be drawn to the screen must implement this trait
-pub trait ViewableComponent {
+// Draw component w/ ratatui
+pub trait Draw {
     fn draw(&mut self, f: &mut Frame, area: Rect, focused: bool) -> Result<()>;
 }
 
-/// All components that can take user input must implement this trait
-pub trait ControllableComponent {
-    fn key_event(&mut self, key: Key) -> Result<EventState>;
+// Process Key
+pub trait Event {
+    fn event(&mut self, key: Key) -> EventState;
 }

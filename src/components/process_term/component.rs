@@ -94,7 +94,7 @@ pub struct Component {
 }
 
 impl Component {
-    pub fn key_event(&self, key: Key) -> EventState {
+    pub fn event(&self, key: Key) -> EventState {
         if let Some(event) = self.controller.key_event(key) {
             self.model.event(event)
         } else {

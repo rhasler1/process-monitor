@@ -1,9 +1,11 @@
-use crate::components::process_table::row::{Row, Rows, RowsEvent};
-use crate::components::process_table::column::{Column, Columns, ColumnEvent};
-use crate::components::text_line::model::{TextLineModel, TextLineEvent};
+use crate::events::EventState;
 use crate::config::config::Config;
 use crate::domain::process::model::ProcessSnapShot;
-use crate::events::EventState;
+use crate::components::process_table::{
+    row::{Row, RowOrder, Rows, RowsEvent},
+    column::{Column, Columns, ColumnEvent}
+};
+use crate::components::text_line::model::{TextLineModel, TextLineEvent};
 
 #[derive(Clone, PartialEq)]
 pub enum TableFocus {
@@ -12,7 +14,6 @@ pub enum TableFocus {
     Filter
 }
 
-//#[derive(Clone, PartialEq)]
 pub enum TableEvent {
     MoveFocus(TableFocus),
     OnRows(RowsEvent),
@@ -43,6 +44,7 @@ impl TableModel {
                 self.focus = table_focus;
             }
             TableEvent::OnRows(row_event) => {
+                // TODO if row event is a sort, then the column header should be updated
                 // `row_event` may return EventState::ReturnPID(pid)
                 return self.rows.event(row_event);
             }
@@ -75,6 +77,10 @@ impl TableModel {
 
     pub fn row_selection(&self) -> Option<usize> {
         self.rows.get_selection()
+    }
+
+    pub fn row_order(&self) -> &RowOrder {
+        self.rows.get_order()
     }
 
     // Column methods

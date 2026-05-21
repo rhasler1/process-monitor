@@ -1,16 +1,15 @@
 use anyhow::Result;
-use crate::{components::process_table::table::TableModel, config::config::Config};
-use crate::components::process_table::controller::TableController;
-use crate::domain::process::model::ProcessSnapShot;
+use ratatui::prelude::{Frame, Rect};
+use crate::components::{Draw, Event};
 use crate::events::EventState;
 use crate::adapters::crossterm::input::Key;
-use crate::components::process_table::view::TableView;
-use ratatui::prelude::{Frame, Rect};
-
-pub enum Focus {
-    TableComponent,
-    TerminationComponent
-}
+use crate::domain::process::model::ProcessSnapShot;
+use crate::components::process_table::{
+    table::TableModel,
+    view::TableView,
+    controller::TableController
+};
+use crate::config::config::Config;
 
 pub struct TableComponent {
     model:      TableModel,
@@ -27,19 +26,23 @@ impl TableComponent {
         }
     }
 
-    pub fn key_event(&mut self, key: Key) -> EventState {
+    pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) {
+        self.model.new_snapshot(snapshot);
+    }
+}
+
+impl Event for TableComponent {
+    fn event(&mut self, key: Key) -> EventState {
         if let Some(event) = self.controller.key_event(key, &self.model) {
             self.model.event(event)
         } else {
             EventState::NotConsumed
         }
     }
+}
 
-    pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) {
-        self.model.new_snapshot(snapshot);
-    }
-
-    pub fn draw(&mut self, frame: &mut Frame, area: Rect, focus: bool) -> Result<()> {
+impl Draw for TableComponent {
+    fn draw(&mut self, frame: &mut Frame, area: Rect, focus: bool) -> Result<()> {
         self.view.draw(frame, area, focus, &self.model)?;
         Ok(())
     }

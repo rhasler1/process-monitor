@@ -1,6 +1,8 @@
-use crate::domain::process::primitive::ProcessItem;
-use crate::domain::process::model::ProcessSnapShot;
 use crate::events::EventState;
+use crate::domain::process::{
+    primitive::ProcessItem,
+    model::ProcessSnapShot
+};
 
 pub struct Row {
     pub pid:             u32,
@@ -29,14 +31,14 @@ impl Row {
 
     pub fn order(&self, other: &Self, order: &RowOrder) -> std::cmp::Ordering {
         match order {
-            RowOrder::PIDDec  =>  other.pid.cmp(&self.pid),
-            RowOrder::PIDInc  =>  self.pid.cmp(&other.pid),
+            RowOrder::PIDDec  => other.pid.cmp(&self.pid),
+            RowOrder::PIDInc  => self.pid.cmp(&other.pid),
             RowOrder::NameDec => other.name.cmp(&self.name),
             RowOrder::NameInc => self.name.cmp(&other.name),
-            RowOrder::CPUDec  =>  other.total_cpu_usage.partial_cmp(&self.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
-            RowOrder::CPUInc  =>  self.total_cpu_usage.partial_cmp(&other.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
-            RowOrder::MemDec  =>  other.mem_usage.cmp(&self.mem_usage),
-            RowOrder::MemInc  =>  self.mem_usage.cmp(&other.mem_usage)
+            RowOrder::CPUDec  => other.total_cpu_usage.partial_cmp(&self.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
+            RowOrder::CPUInc  => self.total_cpu_usage.partial_cmp(&other.total_cpu_usage).unwrap_or(std::cmp::Ordering::Equal),
+            RowOrder::MemDec  => other.mem_usage.cmp(&self.mem_usage),
+            RowOrder::MemInc  => self.mem_usage.cmp(&other.mem_usage)
         }
     }
 
@@ -168,8 +170,8 @@ impl Rows {
         None
     }
 
-    /// Returns iterator over filtered & sorted rows. The Iterator 
-    /// Item includes a Row reference and a flag indicating if the row is the selected row
+    // Returns iterator over filtered & sorted rows. The Iterator 
+    // Item includes a Row reference and a flag indicating if the row is the selected row
     pub fn iter_filter_and_sort(&self) -> impl Iterator<Item = (&Row, bool)> {
         // Turn the vector returned by filter_and_sort_indices() into an iterator that references &Row
         // Note: into_iter() consumes the collection returned by filter_and_sort_indices();
@@ -177,7 +179,7 @@ impl Rows {
         self.filter_and_sort_indices().into_iter().enumerate().map(|(idx, visible_value)| (&self.rows[visible_value], Some(idx) == self.selection))
     }
    
-    /// Return row indices after applying filter and sort
+    // Return row indices after applying filter and sort
     fn filter_and_sort_indices(&self) -> Vec<usize> {
         let mut indices: Vec<usize> = (0..self.rows.len()).collect();
         
@@ -210,10 +212,14 @@ impl Rows {
     pub fn get_row_count_after_filter(&self) -> usize {
         self.filter_and_sort_indices().len()
     }
+
+    pub fn get_order(&self) -> &RowOrder {
+        &self.order
+    } 
 }
 
 
-/// Create inner rows data
+// Create inner rows data
 impl From<&ProcessSnapShot> for Vec<Row> {
     fn from(snapshot: &ProcessSnapShot) -> Vec<Row> {
        let rows: Vec<Row> = snapshot.iter().map(|item| Row::from(item)).collect();
@@ -221,7 +227,7 @@ impl From<&ProcessSnapShot> for Vec<Row> {
     }
 }
 
-/// Create Rows structure
+// Create Rows structure
 impl From<&ProcessSnapShot> for Rows {
     fn from(snapshot: &ProcessSnapShot) -> Self {
        let rows: Vec<Row> = snapshot.iter().map(|item| Row::from(item)).collect();

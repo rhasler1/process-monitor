@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::error;
 use serde::{Deserialize, Serialize};
 use crate::{config::config::{Config, write_config}, events::EventState};
 
@@ -269,7 +269,7 @@ impl Default for Columns {
 #[cfg(test)]
 pub mod test {
     use super::{ColumnID, Column, ColumnEvent, Columns, CPUUnitOptions, Direction};
-
+    
     #[test]
     fn test_event() {
         let mut columns: Columns = Columns::default();

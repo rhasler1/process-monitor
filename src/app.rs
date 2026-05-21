@@ -10,6 +10,8 @@ use crate::components::process_table::component::TableComponent;
 use crate::components::process_term::component::Component as ProcTermComponent;
 use crate::events::EventState;
 
+use crate::components::{Draw, Event};
+
 #[derive(Default)]
 pub enum Focus {
     #[default]
@@ -62,7 +64,7 @@ impl App {
         debug!("`App`: key_event()");
         let return_val = match self.focus {
             Focus::Table => {
-                let mut event_state = self.process_table.key_event(key);
+                let mut event_state = self.process_table.event(key);
                 if event_state.is_return_pid() {
                     // safe to unwrap here
                     let pid = event_state.pid();
@@ -74,7 +76,7 @@ impl App {
                 event_state
             }
             Focus::Termination => {
-                let event_state = self.process_term.key_event(key);
+                let event_state = self.process_term.event(key);
                 if event_state.is_consumed() || event_state.is_return_pid() {
                     self.process_term.set(None);
                     self.focus = Focus::Table;

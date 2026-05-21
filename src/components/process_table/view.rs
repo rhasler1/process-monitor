@@ -1,5 +1,6 @@
 use anyhow::Result;
-use crate::components::process_table::column::{ColumnID, MemUnitOptions, CPUUnitOptions};
+use crate::components::process_table::column::{Column, ColumnID, MemUnitOptions, CPUUnitOptions};
+use crate::components::process_table::row::RowOrder;
 use crate::components::process_table::table::{TableFocus, TableModel};
 use crate::components::utils::scroll::Scroll;
 use ratatui::layout::Alignment;
@@ -13,6 +14,29 @@ pub struct TableView {
 }
 
 impl TableView {
+    fn build_header(col: &Column, order: &RowOrder) -> String {
+        if matches!(col.id, ColumnID::PID) && matches!(order, RowOrder::PIDDec) {
+            format!("{} ▼", col.header())
+        } else if matches!(col.id, ColumnID::PID) && matches!(order, RowOrder::PIDInc) {
+            format!("{} ▲", col.header())
+        } else if matches!(col.id, ColumnID::CPU(_)) && matches!(order, RowOrder::CPUDec) {
+            format!("{} ▼", col.header())
+        } else if matches!(col.id, ColumnID::CPU(_)) && matches!(order, RowOrder::CPUInc) {
+            format!("{} ▲", col.header())
+        } else if matches!(col.id, ColumnID::Mem(_)) && matches!(order, RowOrder::MemDec) {
+            format!("{} ▼", col.header())
+        } else if matches!(col.id, ColumnID::Mem(_)) && matches!(order, RowOrder::MemInc) {
+            format!("{} ▲", col.header())
+        } else if matches!(col.id, ColumnID::Name) && matches!(order, RowOrder::NameDec) {
+            format!("{} ▼", col.header())
+        } else if matches!(col.id, ColumnID::Name) && matches!(order, RowOrder::NameInc) {
+            format!("{} ▲", col.header())
+        } 
+        else {
+            format!("{}", col.header())
+        }
+    }
+
     pub fn draw(
         &mut self,
         frame: &mut Frame,
@@ -31,14 +55,17 @@ impl TableView {
         // Subtract header height of 1 from self.height to get the count of rows that can be viewed
         let row_count = chunks[0].height.saturating_sub(1);
 
-        // Mapping columns to ratatui `Cell's` and collecting into a ratatui `Row`
-        // Styling is also done here 
+
         let header: Row = table.cols_iter()
-            .map(|(col, selection_flag)| Cell::from(col.header()).style(if selection_flag && matches!(table.focus(), TableFocus::Columns) {
-                Style::default().fg(Color::White).bg(Color::Blue)
-            } else {
-                Style::default().fg(Color::Black)
-            })).collect::<Row>().style(Style::default().bg(Color::Green));
+            .map(|(col, selection_flag)| {
+                Cell::from(TableView::build_header(col, table.row_order()))
+                    .style(
+                        if selection_flag && matches!(table.focus(), TableFocus::Columns) {
+                            Style::default().fg(Color::White).bg(Color::Blue)
+                        } else {
+                            Style::default().fg(Color::Black)
+            })}).collect::<Row>().style(Style::default().bg(Color::Green));
+
 
         // Setting the starting index to begin row iteration, see utils/scroll.rs for Scroll impl
         let start = if let Some(selection) = table.row_selection() {

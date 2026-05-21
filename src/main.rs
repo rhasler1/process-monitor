@@ -1,7 +1,6 @@
 // Internal project imports
 use process_monitor::app::App;
 use process_monitor::config::config::Config;
-use process_monitor::domain::process::model::ProcessSnapShot;
 use process_monitor::events::app_event::{AppEvent, AppEvents};
 use process_monitor::adapters::crossterm::input::Key;
 use process_monitor::services::sysinfo_worker::{SysinfoWorker, CallerMessage, WorkerMessage};
