@@ -5,15 +5,15 @@ use std::time::{Instant,Duration};
 // MPSC channel
 use std::sync::mpsc::{Receiver,SyncSender,sync_channel};
 
-/// Defines Key, RebuildDomain, and Tick events
+// Defines Key, RebuildDomain, and Tick events
 pub enum AppEvent {
     Key(Key),
     RebuildDomain,
     Tick
 }
 
-/// Bounded MPSC channel where producer sends AppEvent to receiver (located at src/main.rs)
-/// The sending thread will block if the bounded MPSC channel is saturated
+// Bounded MPSC channel where producer sends AppEvent to receiver (located at src/main.rs)
+// The sending thread will block if the bounded MPSC channel is saturated
 pub struct AppEvents {
     rx:  Receiver<AppEvent>,
     _tx: SyncSender<AppEvent>
@@ -24,7 +24,13 @@ impl AppEvents {
     pub const REBUILD_RATE: Duration = Duration::from_millis(2048); // ~2s
     pub const CHANNEL_SIZE: usize = 16;
 
-    pub fn default() -> Self {    
+    pub fn next(&self) -> anyhow::Result<AppEvent, std::sync::mpsc::RecvError> {
+        self.rx.recv()
+    }
+}
+
+impl Default for AppEvents {
+    fn default() -> Self { 
         let (tx, rx) = sync_channel(Self::CHANNEL_SIZE);
         let event_tx = tx.clone();
 
@@ -43,13 +49,11 @@ impl AppEvents {
                         return;
                     } // Crossterm key | mouse event check
                 } else if let Ok(true) = crossterm::event::poll(Self::TICK_RATE) {
-                    if let Ok(event) = crossterm::event::read() {
-                        if let crossterm::event::Event::Key(key) = event {
-                            // Check needed for Windows
-                            if key.kind == crossterm::event::KeyEventKind::Press
-                                && event_tx.send(AppEvent::Key(Key::from(key))).is_err() {
-                                return;
-                            }
+                    if let Ok(crossterm::event::Event::Key(key)) = crossterm::event::read() {
+                        // Check needed for Windows
+                        if key.kind == crossterm::event::KeyEventKind::Press
+                            && event_tx.send(AppEvent::Key(Key::from(key))).is_err() {
+                            return;
                         }
                     } // No refresh & no key | mouse event then send tick event
                 } else if event_tx.send(AppEvent::Tick).is_err() {
@@ -59,10 +63,6 @@ impl AppEvents {
         });
         AppEvents {rx, _tx: tx}
     }
-
-    pub fn next(&self) -> anyhow::Result<AppEvent, std::sync::mpsc::RecvError> {
-        self.rx.recv()
-    }
 }
 
 #[cfg(test)]
@@ -70,7 +70,7 @@ mod test {
     use std::time::Instant;
     use super::{AppEvent,AppEvents};
 
-    /// Test checks refresh events occur between REFRESH_RATE and REFRESH_RATE + TICK_RATE
+    // Test checks refresh events occur between REFRESH_RATE and REFRESH_RATE + TICK_RATE
     #[test]
     fn test_app_events() {
         let app_events = AppEvents::default();
@@ -101,5 +101,4 @@ mod test {
             };
         }
     }
-    // TODO: Experiment with different channel sizes
 }
