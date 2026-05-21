@@ -164,12 +164,7 @@ impl Columns {
         let col_count = self.columns.len();
 
         if col_count < self.capacity {
-            let insert_pos = 
-                if let Some(selection) = self.selection {
-                    selection
-                } else {
-                    0
-                };
+            let insert_pos = self.selection.unwrap_or(0);
             self.columns.insert(insert_pos, col);
             self.apply_selection_invariant();
         }
@@ -234,7 +229,7 @@ impl From<&Config> for Columns {
         
         columns.capacity  = Self::DEFAULT_CAPACITY;
         
-        columns.selection = if columns.columns.len() == 0 {
+        columns.selection = if columns.columns.is_empty() {
             None
         } else {
             Some(0)
@@ -252,7 +247,7 @@ impl Default for Columns {
             Column::from(ColumnID::CPU(CPUUnitOptions::Avg)), 
             Column::from(ColumnID::Mem(MemUnitOptions::B))];
         
-        let selection = if columns.len() == 0 {
+        let selection = if columns.is_empty() {
             None
         } else {
             Some(0)

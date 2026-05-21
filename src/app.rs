@@ -26,8 +26,8 @@ pub struct App {
     focus:            Focus
 }
 
-impl App {
-    pub fn default() -> Self {
+impl Default for App {
+    fn default() -> Self {
         let process_snapshot = ProcessSnapShot::default();
         let process_table    = TableComponent::from(&process_snapshot);
         let process_term     = ProcTermComponent::default();
@@ -40,7 +40,9 @@ impl App {
             focus
         }
     }
+}
 
+impl App {
     pub fn new(config: &Config) -> Self {
         let process_snapshot = ProcessSnapShot::default();
         let process_table    = TableComponent::new(&process_snapshot, config);
@@ -62,7 +64,7 @@ impl App {
 
     pub fn key_event(&mut self, key: Key) -> EventState {
         debug!("`App`: key_event()");
-        let return_val = match self.focus {
+        match self.focus {
             Focus::Table => {
                 let mut event_state = self.process_table.event(key);
                 if event_state.is_return_pid() {
@@ -83,8 +85,7 @@ impl App {
                 }
                 event_state
             }
-        };
-        return_val
+        }
     }
     
     pub fn draw(&mut self, frame: &mut Frame) -> anyhow::Result<()> {

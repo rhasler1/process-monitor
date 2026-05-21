@@ -184,7 +184,7 @@ impl Rows {
         let mut indices: Vec<usize> = (0..self.rows.len()).collect();
         
         if let Some(filter) = &self.filter {
-            indices.retain(|&i| self.rows[i].filter(&filter));
+            indices.retain(|&i| self.rows[i].filter(filter));
         }
         
         indices.sort_by(|&i, &j| self.rows[i].order(&self.rows[j], &self.order));
@@ -222,7 +222,7 @@ impl Rows {
 // Create inner rows data
 impl From<&ProcessSnapShot> for Vec<Row> {
     fn from(snapshot: &ProcessSnapShot) -> Vec<Row> {
-       let rows: Vec<Row> = snapshot.iter().map(|item| Row::from(item)).collect();
+       let rows: Vec<Row> = snapshot.iter().map(Row::from).collect();
        rows
     }
 }
@@ -230,8 +230,8 @@ impl From<&ProcessSnapShot> for Vec<Row> {
 // Create Rows structure
 impl From<&ProcessSnapShot> for Rows {
     fn from(snapshot: &ProcessSnapShot) -> Self {
-       let rows: Vec<Row> = snapshot.iter().map(|item| Row::from(item)).collect();
-       let selection = if rows.len() > 0 {
+       let rows: Vec<Row> = snapshot.iter().map(Row::from).collect();
+       let selection = if !rows.is_empty() {
             Some(0)
        } else {
             None

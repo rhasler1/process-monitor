@@ -63,14 +63,6 @@ pub struct ProcessSnapShotHistory {
 }
 
 impl ProcessSnapShotHistory {
-    pub fn default() -> Self {
-        const DEFAULT_CAPACITY: usize = 10;
-        let data: BoundedQueue<ProcessSnapShot> = BoundedQueue::new(DEFAULT_CAPACITY);
-        Self {
-            data
-        }
-    }
-
     pub fn new(capacity: usize) -> Self {
         let data: BoundedQueue<ProcessSnapShot> = BoundedQueue::new(capacity);
         Self {

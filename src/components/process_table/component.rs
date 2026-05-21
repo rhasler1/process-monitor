@@ -21,7 +21,7 @@ impl TableComponent {
     pub fn new(snapshot: &ProcessSnapShot, config: &Config) -> Self {
         Self {
             model:      TableModel::new(snapshot, config),
-            controller: TableController::default(),
+            controller: TableController,
             view:       TableView::default()
         }
     }
@@ -52,7 +52,7 @@ impl From<&ProcessSnapShot> for TableComponent {
     fn from(snapshot: &ProcessSnapShot) -> Self {
         Self {
             model:      TableModel::from(snapshot),
-            controller: TableController::default(),
+            controller: TableController,
             view:       TableView::default()
         }
     }

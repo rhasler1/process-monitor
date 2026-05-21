@@ -46,17 +46,14 @@ impl AppEvents {
                     if let Ok(event) = crossterm::event::read() {
                         if let crossterm::event::Event::Key(key) = event {
                             // Check needed for Windows
-                            if key.kind == crossterm::event::KeyEventKind::Press {
-                                if event_tx.send(AppEvent::Key(Key::from(key))).is_err() {
-                                    return;
-                                }
+                            if key.kind == crossterm::event::KeyEventKind::Press
+                                && event_tx.send(AppEvent::Key(Key::from(key))).is_err() {
+                                return;
                             }
                         }
                     } // No refresh & no key | mouse event then send tick event
-                } else {
-                    if event_tx.send(AppEvent::Tick).is_err() {
-                        return; 
-                    }
+                } else if event_tx.send(AppEvent::Tick).is_err() {
+                    return; 
                 }
             }
         });

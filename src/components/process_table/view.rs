@@ -31,9 +31,8 @@ impl TableView {
             format!("{} ▼", col.header())
         } else if matches!(col.id, ColumnID::Name) && matches!(order, RowOrder::NameInc) {
             format!("{} ▲", col.header())
-        } 
-        else {
-            format!("{}", col.header())
+        } else {
+            col.header().to_string()
         }
     }
 
@@ -82,8 +81,8 @@ impl TableView {
                 let mut cells: Vec<Cell> = Vec::new();
                 table.cols_iter().for_each(|(col, _col_selection_flag)| {
                     let cell = match &col.id {
-                        ColumnID::PID  => Cell::from(format!("{}",process_item.pid)),
-                        ColumnID::Name => Cell::from(format!("{}",process_item.name)),
+                        ColumnID::PID  => Cell::from(format!("{}", process_item.pid)),
+                        ColumnID::Name => Cell::from(process_item.name.to_string()),
                         ColumnID::CPU(unit)  => {
                             match unit {
                                 CPUUnitOptions::Avg => Cell::from(format!("{:.1}",process_item.avg_cpu_usage)),

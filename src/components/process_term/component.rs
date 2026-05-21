@@ -70,7 +70,7 @@ impl View {
 
             let pid = model.get();
             let msg1 = format!("Selected PID to terminate: {pid:?}");
-            let msg2 = format!("Press 'y' to confirm or 'n' to deny");
+            let msg2 = "Press 'y' to confirm or 'n' to deny".to_string();
             let line1 = Line::from(msg1);
             let line2 = Line::from(msg2);
             let vec = vec![line1,line2];

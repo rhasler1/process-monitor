@@ -8,15 +8,17 @@ pub struct SysinfoDataSource {
     system: sysinfo::System
 }
 
-impl SysinfoDataSource {
+impl Default for SysinfoDataSource {
     /// Creates a default sysinfo::System instance that can be used
     /// to fetch system process information
-    pub fn default() -> Self {
+    fn default() -> Self {
         Self {
             system: sysinfo::System::new_all()
         }
     }
+}
 
+impl SysinfoDataSource {
     /// Refreshes sysinfo internal structures
     pub fn refresh_all(&mut self) {
         self.system.refresh_all();
