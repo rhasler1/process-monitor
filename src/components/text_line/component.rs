@@ -18,7 +18,7 @@ impl Default for TextLineComponent {
     fn default() -> Self {
         Self {
             model:      TextLineModel::default(),
-            controller: TextLineController::default(),
+            controller: TextLineController,
             view:       TextLineView::default()
         }
     }

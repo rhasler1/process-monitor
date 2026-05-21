@@ -19,7 +19,8 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        let config = match build_proj_dir() {
+        
+        match build_proj_dir() {
             Ok(_) => {
                 match read_config() {
                     Ok(s)  => { 
@@ -38,8 +39,7 @@ impl Default for Config {
                 debug!("`Config:` default(): Creating `Config` with default parameters");
                 Config { columns_config: None }
             }
-        };
-        config
+        }
     }
 }
 

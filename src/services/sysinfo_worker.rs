@@ -32,7 +32,29 @@ pub struct SysinfoWorker {
 }
 
 impl SysinfoWorker {
-    pub fn default() -> Self {
+    // `try_next` is not blocking
+    // Return: Ok(WorkerMessage) or Err(TryRecvError::Empty) or Err(TryRecvError::Disconnected)
+    pub fn try_next(&self) -> Result<WorkerMessage, TryRecvError> {
+        self.rx.try_recv()
+    }
+
+    pub fn next(&self) -> Result<WorkerMessage, RecvError> {
+        self.rx.recv()
+    }
+
+    // `send` is blocking
+    // Returns Error if the receiver is disconnected
+    pub fn send(&self, msg: CallerMessage) -> Result<(), SendError<CallerMessage>> {
+        self.tx.send(msg)
+    }
+    
+    pub fn try_send(&self, msg: CallerMessage) -> Result<(), TrySendError<CallerMessage>> {
+        self.tx.try_send(msg)
+    }
+}
+
+impl Default for SysinfoWorker {
+    fn default() -> Self {
         // [5/4/26] No longer using rendezvous channels because the worker 
         // can receive multiple tasks, requiring a queue. The channel does
         // not need to be large, in a use case, at most, the channel contains
@@ -102,26 +124,6 @@ impl SysinfoWorker {
         });
         // Return channel ends used by caller
         SysinfoWorker {rx: from_worker_rx, tx: to_worker_tx}
-    }
-
-    // `try_next` is not blocking
-    // Return: Ok(WorkerMessage) or Err(TryRecvError::Empty) or Err(TryRecvError::Disconnected)
-    pub fn try_next(&self) -> Result<WorkerMessage, TryRecvError> {
-        self.rx.try_recv()
-    }
-
-    pub fn next(&self) -> Result<WorkerMessage, RecvError> {
-        self.rx.recv()
-    }
-
-    // `send` is blocking
-    // Returns Error if the receiver is disconnected
-    pub fn send(&self, msg: CallerMessage) -> Result<(), SendError<CallerMessage>> {
-        self.tx.send(msg)
-    }
-    
-    pub fn try_send(&self, msg: CallerMessage) -> Result<(), TrySendError<CallerMessage>> {
-        self.tx.try_send(msg)
     }
 }
 

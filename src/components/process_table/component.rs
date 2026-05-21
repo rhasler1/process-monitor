@@ -9,7 +9,7 @@ use crate::components::process_table::{
     view::TableView,
     controller::TableController
 };
-use crate::config::config::Config;
+use crate::config::app_config::Config;
 
 pub struct TableComponent {
     model:      TableModel,

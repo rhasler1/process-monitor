@@ -79,13 +79,13 @@ mod test {
         let refresh_iters = 2;
         let mut refresh_count = 0;
         loop {
-            let _ = match app_events.next() {
+            match app_events.next() {
                 Ok(AppEvent::RebuildDomain) => {
                     let now_refresh = Instant::now();
                     let delta_refresh = now_refresh.duration_since(last_refresh);
                     assert!(delta_refresh >= AppEvents::REBUILD_RATE && delta_refresh <= AppEvents::REBUILD_RATE + AppEvents::TICK_RATE);
                     last_refresh = now_refresh;
-                    refresh_count = refresh_count + 1;
+                    refresh_count += 1;
                     if refresh_count >= refresh_iters {
                         break;
                     }

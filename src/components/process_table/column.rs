@@ -1,6 +1,6 @@
 use log::error;
 use serde::{Deserialize, Serialize};
-use crate::{config::config::{Config, write_config}, events::EventState};
+use crate::{config::app_config::{Config, write_config}, events::EventState};
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum MemUnitOptions {
@@ -276,7 +276,7 @@ pub mod test {
         for _ in 0..(columns.get_count() + 1) {
             columns.event(ColumnEvent::RemoveColumn);
         }
-        assert!(columns.selection == None);
+        assert!(columns.selection.is_none());
         assert!(columns.get_count() == 0);
 
         // BVA for InsertColumn

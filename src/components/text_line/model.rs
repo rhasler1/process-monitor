@@ -48,7 +48,7 @@ impl TextLineModel {
             match dir {
                 MoveDirection::Left => {
                     if self.cursor > 0 {
-                        self.cursor = self.cursor - 1;
+                        self.cursor -= 1;
                         true
                     } else {
                         false
@@ -56,7 +56,7 @@ impl TextLineModel {
                 }
                 MoveDirection::Right => {
                     if self.cursor < len {
-                        self.cursor = self.cursor + 1;
+                        self.cursor += 1;
                         true
                     } else {
                         false
@@ -69,7 +69,7 @@ impl TextLineModel {
     fn insert_invariant(&mut self, c: char) -> bool {
         if self.buffer.len() < Self::BUFFER_CAPACITY {
             self.buffer.insert(self.cursor, c);
-            self.cursor = self.cursor + 1;
+            self.cursor += 1;
             true
         } else {
             false
@@ -77,10 +77,10 @@ impl TextLineModel {
     }
 
     fn remove_invariant(&mut self) -> bool {
-        if self.buffer.len() == 0 || self.cursor == 0 {
+        if self.buffer.is_empty() || self.cursor == 0 {
             false
         } else {
-            self.cursor = self.cursor - 1;
+            self.cursor -= 1;
             self.buffer.remove(self.cursor);
             true
         }
@@ -92,6 +92,10 @@ impl TextLineModel {
 
     pub fn len(&self) -> usize {
         self.buffer.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
     }
 
     pub fn capacity(&self) -> usize {

@@ -57,15 +57,15 @@ pub mod test {
         let height = 10;
         let cursor = 0;
         let start = scroll.calc_start(height, cursor);
-        assert_eq!(start, 0 as usize);
+        assert_eq!(start, 0_usize);
         
         let cursor = 1;
         let start = scroll.calc_start(height, cursor);
-        assert_eq!(start, 0 as usize);
+        assert_eq!(start, 0_usize);
         
         let cursor = 10;
         let start = scroll.calc_start(height, cursor);
-        assert_eq!(start, 1 as usize);
+        assert_eq!(start, 1_usize);
 
         let height = 15; // 7,8,9,10,11,12,13,14,15,16,17,18,19,20,21
         let cursor = 21;

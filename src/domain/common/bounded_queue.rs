@@ -21,14 +21,17 @@ impl<T> BoundedQueue<T> {
     }
     
     pub fn push_back(&mut self, element: T) {
-        let len = self.queue.len();
-        if len < self.capacity {
-            self.queue.push_back(element);
-        } else if len == self.capacity {
-            self.queue.pop_front();
-            self.queue.push_back(element);
-        } else {
-            unreachable!("Invalid state reached")
+        match self.queue.len().cmp(&self.capacity) {
+            std::cmp::Ordering::Less => {
+                self.queue.push_back(element);
+            }
+            std::cmp::Ordering::Equal => {
+                self.queue.pop_front();
+                self.queue.push_back(element);
+            }
+            std::cmp::Ordering::Greater => {
+                unreachable!("Invalid state reached")
+            }
         }
     }
 
@@ -65,7 +68,7 @@ mod test {
         assert_eq!(2, *q.front().unwrap());
         assert_eq!(3, *q.back().unwrap());
         let q_iter = q.iter();
-        let v: Vec<_> = q_iter.rev().map(|element| {*element}).collect();
+        let v: Vec<_> = q_iter.rev().copied().collect();
         assert_eq!(v[0], 3);
         assert_eq!(v[1], 2);
     }
@@ -75,15 +78,15 @@ mod test {
     use std::ffi::OsString;
     #[test]
     fn test_bounded_queue_containing_snapshots() {
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
-        let snapshot1 = ProcessSnapShot::new(vec![item1,item2,item3], 10 as i64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5_f32, 5_f32, 10_u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 5_f32, 5_f32, 10_u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 5_f32, 5_f32, 10_u64);
+        let snapshot1 = ProcessSnapShot::new(vec![item1,item2,item3], 10_i64);
 
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 6 as f32, 6 as f32, 11 as u64);
-        let item2 = ProcessItem::new(3, OsString::from("pm"), 7 as f32, 7 as f32, 12 as u64);
-        let item3 = ProcessItem::new(4, OsString::from("pd"), 8 as f32, 8 as f32, 13 as u64);
-        let snapshot2 = ProcessSnapShot::new(vec![item1,item2,item3], 10 as i64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 6_f32, 6_f32, 11_u64);
+        let item2 = ProcessItem::new(3, OsString::from("pm"), 7_f32, 7_f32, 12_u64);
+        let item3 = ProcessItem::new(4, OsString::from("pd"), 8_f32, 8_f32, 13_u64);
+        let snapshot2 = ProcessSnapShot::new(vec![item1,item2,item3], 10_i64);
 
         let mut q = BoundedQueue::<ProcessSnapShot>::new(2);
         assert_eq!(q.capacity, 2);
@@ -97,9 +100,9 @@ mod test {
         }
         assert!(storage.len() == 2);
         for snap_pids in storage {
-            assert!(snap_pids[0] == 2 as u32);
-            assert!(snap_pids[1] == 3 as u32);
-            assert!(snap_pids[2] == 4 as u32);
+            assert!(snap_pids[0] == 2_u32);
+            assert!(snap_pids[1] == 3_u32);
+            assert!(snap_pids[2] == 4_u32);
         }
     }
 }

@@ -326,18 +326,18 @@ pub mod test {
         let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_0.toml");
         let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
         let new_rows = Vec::<Row>::from(&proc_snapshot);
-        let count = new_rows.iter().count();
+        let count = new_rows.len();
         rows.replace_rows(new_rows);
-        assert_eq!(rows.rows.iter().count(), count);
+        assert_eq!(rows.rows.len(), count);
         assert_eq!(rows.get_selection(), None);
 
         let proc_str = include_str!("../../../test/fixtures/process_snapshot_count_1.toml");
         let proc_snapshot = ProcessSnapShot::deserialize(proc_str);
         let new_rows = Vec::<Row>::from(&proc_snapshot);
-        let count = new_rows.iter().count();
+        let count = new_rows.len();
 
         rows.replace_rows(new_rows);
-        assert_eq!(rows.rows.iter().count(), count);
+        assert_eq!(rows.rows.len(), count);
         assert_eq!(rows.get_selection(), Some(0));
     }
 

@@ -90,17 +90,17 @@ pub mod test {
     
     #[test]
     fn test_process_item_eq() {
-        let item1 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
-        let item2 = ProcessItem::new(2, OsString::from("pm"), 5 as f32, 5 as f32, 10 as u64);
+        let item1 = ProcessItem::new(2, OsString::from("pm"), 5_f32, 5_f32, 10_u64);
+        let item2 = ProcessItem::new(2, OsString::from("pm"), 5_f32, 5_f32, 10_u64);
         assert!(item1.eq(&item2));
-        let item3 = ProcessItem::new(3, OsString::from("pd"), 5 as f32, 5 as f32, 10 as u64);
+        let item3 = ProcessItem::new(3, OsString::from("pd"), 5_f32, 5_f32, 10_u64);
         assert!(!item2.eq(&item3));
     }
 
     #[test]
     fn test_process_item_name_to_string_lossy() {
         let pname = "pm";
-        let item1 = ProcessItem::new(2, OsString::from(pname), 5 as f32, 5 as f32, 10 as u64);
+        let item1 = ProcessItem::new(2, OsString::from(pname), 5_f32, 5_f32, 10_u64);
         let cow = item1.name_to_string_lossy();
         assert_eq!(cow.into_owned(), String::from(pname));
     }

@@ -4,7 +4,7 @@ use log::{debug, info};
 use ratatui::prelude::{Frame, Layout, Direction, Constraint};
 // Internal application
 use crate::adapters::crossterm::input::Key;
-use crate::config::config::Config;
+use crate::config::app_config::Config;
 use crate::domain::process::model::{ProcessSnapShot};
 use crate::components::process_table::component::TableComponent;
 use crate::components::process_term::component::Component as ProcTermComponent;

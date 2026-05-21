@@ -41,8 +41,8 @@ impl TextLineView {
             self.height = area.height;
         }
 
-        let start = self.scroll.calc_start(self.len.into(), model.cursor().into());
-        let view =  &model.buffer()[start..model.len().into()];
+        let start = self.scroll.calc_start(self.len.into(), model.cursor());
+        let view =  &model.buffer()[start..model.len()];
         
         let line = match self.alignment {
             LineAlignment::Left   => Line::from(view).style(Style::default().fg(Color::Blue)).alignment(Alignment::Left),

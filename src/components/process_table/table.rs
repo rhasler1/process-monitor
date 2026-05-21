@@ -1,5 +1,5 @@
 use crate::events::EventState;
-use crate::config::config::Config;
+use crate::config::app_config::Config;
 use crate::domain::process::model::ProcessSnapShot;
 use crate::components::process_table::{
     row::{Row, RowOrder, Rows, RowsEvent},
