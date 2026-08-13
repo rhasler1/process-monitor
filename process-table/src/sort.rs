@@ -1,7 +1,9 @@
 
+#[derive(Debug, Default, PartialEq, Eq)]
 pub enum Sort {
     PidDec,
     PidInc,
+    #[default]
     CpuDec,
     CpuInc,
     MemDec,
@@ -9,3 +11,4 @@ pub enum Sort {
     NameDec,
     NameInc
 }
+

@@ -54,6 +54,19 @@ impl ProcessTable {
             })
     }
 
+    pub fn get_row(
+        &self,
+        sort: &Sort,
+        ast: &Option<AST>,
+        visual_selection: Option<usize>
+        ) -> Option<&Row> {
+        if let Some(visual_selection) = visual_selection {
+            self.visible_rows(sort, ast).nth(visual_selection)
+        } else {
+            None
+        }
+    }
+
     pub fn count_visible_rows(&self, ast: &Option<AST>) -> usize {
         if let Some(ast) = ast {
             self.rows_filtered(ast).count()

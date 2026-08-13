@@ -11,8 +11,10 @@ pub struct AsciiString {
     cursor: usize
 }
 
+// TODO: Document
 impl AsciiString {
     // Buffer mut methods
+
     pub fn insert_ch(&mut self, ch: char) -> Result<(), BufError> {
         if !ch.is_ascii() {
             return Err(BufError::NonAsciiInsertCh(ch))
@@ -24,16 +26,14 @@ impl AsciiString {
         Ok(())
     }
 
-    pub fn remove_ch(&mut self) -> Result<(), BufError> {
+    pub fn remove_ch(&mut self) {
         if self.cursor  == 0 {
             // Nothing to remove
-            return Ok(())
+            return
         }
 
         self.cursor -= 1;
         self.buffer.remove(self.cursor);
-
-        Ok(())
     }
 
     pub fn insert_str(&mut self, s: &str) -> Result<(), BufError> {
@@ -118,14 +118,14 @@ mod test {
         // BVA
         assert!(ascii_string.is_empty());
         assert_eq!(ascii_string.cursor(), 0);
-        ascii_string.remove_ch().unwrap();
+        ascii_string.remove_ch();
         assert!(ascii_string.is_empty());
         assert_eq!(ascii_string.cursor(), 0);
 
         ascii_string.insert_ch('h').unwrap();
         assert!(!ascii_string.is_empty());
         assert_eq!(ascii_string.cursor(), 1);
-        ascii_string.remove_ch().unwrap();
+        ascii_string.remove_ch();
         assert!(ascii_string.is_empty());
         assert_eq!(ascii_string.cursor(), 0);
     }

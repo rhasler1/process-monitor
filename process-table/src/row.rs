@@ -123,6 +123,7 @@ impl ProcessEntry {
         }
     }
 
+    // Currently, not being used
     pub fn cell(&self, column: Column) -> Cell<'_> {
         match column {
             Column::Pid => Cell::Pid(&self.pid),
@@ -145,6 +146,8 @@ impl ProcessEntry {
         }
     }
 
+    // Getters
+
     pub fn pid(&self) -> &ProcessPid {
         &self.pid
     }
@@ -162,4 +165,50 @@ impl ProcessEntry {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use crate::Sort;
+    use super::{ProcessEntry as Row};
+
+    #[test]
+    fn test_row_cmp() {
+        let row1 = Row::new(1, 3.0, 5, "a".to_string());
+        let row2 = Row::new(2, 4.0, 6, "b".to_string());
+
+        assert_eq!(
+            row1.cmp(&row2, &Sort::PidDec),
+            std::cmp::Ordering::Greater
+        );
+
+        assert_eq!(
+            row1.cmp(&row2, &Sort::PidInc),
+            std::cmp::Ordering::Less
+        );
+        
+        assert_eq!(
+            row1.cmp(&row2, &Sort::CpuDec),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            row1.cmp(&row2, &Sort::CpuInc),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            row1.cmp(&row2, &Sort::MemDec),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            row1.cmp(&row2, &Sort::MemInc),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            row1.cmp(&row2, &Sort::NameDec),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            row1.cmp(&row2, &Sort::NameInc),
+            std::cmp::Ordering::Less
+        );
+    }
+}
 
