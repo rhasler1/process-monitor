@@ -1,0 +1,11 @@
+[package]
+name    = "process-table"
+version = "0.1.0"
+edition = "2024"
+
+authors = ["rhasler1 <rhasler@luc.edu>"]
+
+[dependencies]
+
+[profile.release]
+debug = true
