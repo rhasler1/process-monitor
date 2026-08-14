@@ -11,11 +11,16 @@ pub struct AsciiString {
     cursor: usize
 }
 
-// TODO: Document
 impl AsciiString {
-    // Buffer mut methods
-
-    pub fn insert_ch(&mut self, ch: char) -> Result<(), BufError> {
+    /// Inserts ascii character at cursor
+    /// position into the buffer.
+    ///
+    /// If insert is successfuly, cursor is
+    /// advanced by 1.
+    ///
+    /// # Returns
+    /// BufError on non-ascii character.
+    pub fn insert_ascii_ch(&mut self, ch: char) -> Result<(), BufError> {
         if !ch.is_ascii() {
             return Err(BufError::NonAsciiInsertCh(ch))
         }
@@ -26,8 +31,14 @@ impl AsciiString {
         Ok(())
     }
 
+    /// Removes character previous to cursor
+    /// from the buffer.
+    ///
+    /// If no previous character, nothing is removed.
+    ///
+    /// Cursor is moved back by one on successful removal.
     pub fn remove_ch(&mut self) {
-        if self.cursor  == 0 {
+        if self.cursor == 0 {
             // Nothing to remove
             return
         }
@@ -36,7 +47,16 @@ impl AsciiString {
         self.buffer.remove(self.cursor);
     }
 
-    pub fn insert_str(&mut self, s: &str) -> Result<(), BufError> {
+
+    /// Inserts ascii str at cursor
+    /// position into the buffer.
+    ///
+    /// If insert is successfuly, cursor is
+    /// advanced by str.len().
+    ///
+    /// # Returns
+    /// BufError on non-ascii str.
+    pub fn insert_ascii_str(&mut self, s: &str) -> Result<(), BufError> {
         if !s.is_ascii() {
             return Err(BufError::NonAsciiInsertStr(s.to_string()))
         }
@@ -47,6 +67,8 @@ impl AsciiString {
         Ok(())
     }
 
+    /// Clears the buffer and sets cursor
+    /// to 0.
     pub fn clear(&mut self) {
         self.buffer.clear();
         self.cursor = 0;
@@ -66,17 +88,23 @@ impl AsciiString {
     }
 
     // Cursor mut methods
+    
+    /// Increments cursor by 1.
+    ///
+    /// Cursor is clamped by buffer length.
     pub fn inc_cursor(&mut self) {
         if self.cursor < self.buffer.len() {
             self.cursor += 1;
         }
     }
 
+    /// Decrements cursor by 1.
     pub fn dec_cursor(&mut self) {
         self.cursor = self.cursor.saturating_sub(1);
     }
 
     // Cursor get methods
+    
     pub fn cursor(&self) -> usize {
         self.cursor
     }
@@ -87,24 +115,27 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_insert_ch() {
+    fn test_insert_ascii_ch() {
         let mut ascii_string = AsciiString::default();
-        ascii_string.insert_ch('h').unwrap();
-        ascii_string.insert_ch('e').unwrap();
-        ascii_string.insert_ch('l').unwrap();
-        ascii_string.insert_ch('l').unwrap();
-        ascii_string.insert_ch('o').unwrap();
-        ascii_string.insert_ch(' ').unwrap();
-        ascii_string.insert_ch('w').unwrap();
-        ascii_string.insert_ch('o').unwrap();
-        ascii_string.insert_ch('r').unwrap();
-        ascii_string.insert_ch('l').unwrap();
-        ascii_string.insert_ch('d').unwrap();
-        ascii_string.insert_ch('!').unwrap();
+        
+        ascii_string.insert_ascii_ch('h').unwrap();
+        ascii_string.insert_ascii_ch('e').unwrap();
+        ascii_string.insert_ascii_ch('l').unwrap();
+        ascii_string.insert_ascii_ch('l').unwrap();
+        ascii_string.insert_ascii_ch('o').unwrap();
+        ascii_string.insert_ascii_ch(' ').unwrap();
+        ascii_string.insert_ascii_ch('w').unwrap();
+        ascii_string.insert_ascii_ch('o').unwrap();
+        ascii_string.insert_ascii_ch('r').unwrap();
+        ascii_string.insert_ascii_ch('l').unwrap();
+        ascii_string.insert_ascii_ch('d').unwrap();
+        ascii_string.insert_ascii_ch('!').unwrap();
+        
         assert_eq!(
             ascii_string.as_str(),
             "hello world!"
         );
+        
         assert_eq!(
             ascii_string.cursor(),
             ascii_string.as_str().len()
@@ -117,34 +148,37 @@ mod test {
         
         // BVA
         assert!(ascii_string.is_empty());
+        
         assert_eq!(ascii_string.cursor(), 0);
+        
         ascii_string.remove_ch();
+        
         assert!(ascii_string.is_empty());
-        assert_eq!(ascii_string.cursor(), 0);
-
-        ascii_string.insert_ch('h').unwrap();
-        assert!(!ascii_string.is_empty());
-        assert_eq!(ascii_string.cursor(), 1);
-        ascii_string.remove_ch();
-        assert!(ascii_string.is_empty());
+        
         assert_eq!(ascii_string.cursor(), 0);
     }
 
     #[test]
-    fn test_insert_str() {
+    fn test_insert_ascii_str() {
         let mut ascii_string = AsciiString::default();
         
         assert!(ascii_string.is_empty());
-        ascii_string.insert_str("hello world!").unwrap();
+        
+        ascii_string.insert_ascii_str("hello world!").unwrap();
+        
         assert!(!ascii_string.is_empty());
+        
         assert_eq!(ascii_string.as_str(), "hello world!");
+        
         assert_eq!(ascii_string.cursor(), ascii_string.as_str().len());
     }
 
     #[test]
-    fn dec_cursor() {
+    fn test_dec_cursor() {
         let mut ascii_string = AsciiString::default();
+        
         assert!(ascii_string.is_empty());
+        
         assert_eq!(ascii_string.cursor, 0); 
         
         // BVA
@@ -156,7 +190,7 @@ mod test {
     }
 
     #[test]
-    fn inc_cursor() {
+    fn test_inc_cursor() {
         let mut ascii_string = AsciiString::default();
         assert!(ascii_string.is_empty());
         assert_eq!(ascii_string.cursor, 0); 

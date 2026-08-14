@@ -2,7 +2,6 @@ use crate::AsciiString;
 use crate::Lexer;
 use crate::Sort;
 use crate::column::Columns;
-use crate::row;
 use super::Error;
 use super::Parser;
 
@@ -14,6 +13,18 @@ struct ProcessTableVisualSelection {
 }
 
 impl ProcessTableVisualSelection {
+    /// Selection invariant for rows in a ProcessTable.
+    ///
+    /// # Behavior
+    /// - If `upper_bound` is 0, `selection` is None.
+    /// - If `upper_bound` is > 0 and `selection` is
+    ///   Some(_) < `upper_bound`, then `selection`
+    ///   is unchanged.
+    /// - If `upper_bound` is > 0, and `selection` is
+    ///   >= `upper_bound`, then `selection` is set to
+    ///   > `upper_bound - 1`.
+    /// - If `upper_bound` is > 0, and `selection` is 
+    ///   None, then `selection is set to `Some(0)`.
     fn selection_invariant(&mut self, upper_bound: usize) {
         self.selection = if upper_bound == 0 {
             None
@@ -27,10 +38,15 @@ impl ProcessTableVisualSelection {
         }
     }
 
+    /// Updates the selection by applying the
+    /// invariant.
     fn update(&mut self, upper_bound: usize) {
         self.selection_invariant(upper_bound);
     }
 
+    /// Advances the selection by 1.
+    ///
+    /// Selection is clamped by argued upper_bound.
     fn inc_selection(&mut self, upper_bound: usize) {
         if let Some(visual_selection) = self.selection {
             self.selection = Some(visual_selection + 1);
@@ -39,6 +55,7 @@ impl ProcessTableVisualSelection {
         self.selection_invariant(upper_bound);
     }
 
+    /// Moves the selection back by 1.
     fn dec_selection(&mut self, upper_bound: usize) {
         if let Some(visual_selection) = self.selection {
             self.selection = 
@@ -70,7 +87,7 @@ impl ProcessTableViewState {
     
     pub fn filter_string_insert_ch(&mut self, ch: char) -> Result<(), Error> {
         self.filter_string
-            .insert_ch(ch).map_err(Error::from)
+            .insert_ascii_ch(ch).map_err(Error::from)
     }
 
     pub fn filter_string_remove_ch(&mut self) {
@@ -80,7 +97,7 @@ impl ProcessTableViewState {
 
     pub fn filter_string_insert_str(&mut self, s: &str) -> Result<(), Error> {
         self.filter_string
-            .insert_str(s).map_err(Error::from)
+            .insert_ascii_str(s).map_err(Error::from)
     }
 
     // Filter: Option<AST> mutators
@@ -232,15 +249,73 @@ impl ProcessTableViewState {
     }
 }
 
-// TODO: Write unit tests
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn test() {
+    fn test_visual_row_selection_invariant_bound_eq_0() {
+        let row_count = 0;
 
+        let mut view_state = ProcessTableViewState::default();
+
+        assert!(view_state.visual_row_selection().is_none());
+
+        view_state.update_row_selection(row_count);
+
+        assert!(view_state.visual_row_selection().is_none());
+    }
+
+    #[test]
+    fn test_inc_visual_row_selection() {
+        let row_count = 5;
+
+        let mut view_state = ProcessTableViewState::default();
+        
+        assert!(view_state.visual_row_selection().is_none());
+
+        view_state.inc_visual_row_selection(row_count);
+
+        assert_eq!(view_state.visual_row_selection(), Some(0));
+
+        view_state.inc_visual_row_selection(row_count);
+
+        assert_eq!(view_state.visual_row_selection(), Some(1));
+
+        view_state.inc_visual_row_selection(row_count);
+
+        assert_eq!(view_state.visual_row_selection(), Some(2));
+
+        view_state.inc_visual_row_selection(row_count);
+
+        assert_eq!(view_state.visual_row_selection(), Some(3));
+
+        view_state.inc_visual_row_selection(row_count);
+
+        assert_eq!(view_state.visual_row_selection(), Some(4));
+         
+        // BVA
+        view_state.inc_visual_row_selection(row_count);
+
+        assert_eq!(view_state.visual_row_selection(), Some(4));
+    }
+
+    #[test]
+    fn test_dec_visual_row_selection() {
+        let row_count = 5;
+
+        let mut view_state = ProcessTableViewState::default();
+
+        assert!(view_state.visual_row_selection().is_none());
+
+        view_state.update_row_selection(row_count);
+
+        assert_eq!(view_state.visual_row_selection(), Some(0));
+        
+        // BVA
+        view_state.dec_visual_row_selection(row_count);
+
+        assert_eq!(view_state.visual_row_selection(), Some(0));
     }
 }
-
 

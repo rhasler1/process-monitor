@@ -1,6 +1,9 @@
-// Note: For this crate, the majority of testing is unit.
+// The tests in the file look at the interaction
+// between ProcessTable & ProcessTableViewState.
 
-use process_table::{ProcessEntry as Row, ProcessTable, ProcessTableViewState, Sort};
+use process_table::{
+    ProcessEntry as Row, ProcessTable, ProcessTableViewState, Sort,
+};
 
 fn test_four_rows() -> Vec<Row> {
     vec![
@@ -11,8 +14,6 @@ fn test_four_rows() -> Vec<Row> {
     ]
 }
 
-// Tests the interaction between ProcessTable row
-// methods and ProcessTableViewState row methods.
 #[test]
 fn test_filtering_clamps_selection() {
     // Using nonempty rows
@@ -25,13 +26,19 @@ fn test_filtering_clamps_selection() {
 
     // Update Row selection
     view_state.update_row_selection(
-        table.count_visible_rows(view_state.filter_ast()));
+        table.count_visible_rows(
+            view_state.row_sort(),
+            view_state.filter_ast())
+    );
 
     // Selection is set to Some(0)
     assert_eq!(view_state.visual_row_selection(), Some(0));
 
     // Set visible row count variable
-    let visible_row_count = table.count_visible_rows(view_state.filter_ast());
+    let visible_row_count = table.count_visible_rows(
+        view_state.row_sort(),
+        view_state.filter_ast()
+    );
 
     // Move selection to last row
     for _ in 0..visible_row_count {
@@ -52,7 +59,10 @@ fn test_filtering_clamps_selection() {
     view_state.update_filter_ast().unwrap();
 
     // Get visible row count
-    let visible_row_count = table.count_visible_rows(view_state.filter_ast());
+    let visible_row_count = table.count_visible_rows(
+        view_state.row_sort(),
+        view_state.filter_ast()
+    );
 
     assert_eq!(visible_row_count, 1);
 
@@ -93,7 +103,10 @@ fn test_row_scroll_tracks_selection() {
     // Move selection to Some(0)
     view_state
         .inc_visual_row_selection(
-            table.count_visible_rows(view_state.filter_ast())
+            table.count_visible_rows(
+                view_state.row_sort(),
+                view_state.filter_ast()
+            )
         );
     assert_eq!(view_state.visual_row_selection(), Some(0));
     // Selection still in window
@@ -103,7 +116,10 @@ fn test_row_scroll_tracks_selection() {
     // Move selection to Some(1)
     view_state
         .inc_visual_row_selection(
-            table.count_visible_rows(view_state.filter_ast())
+            table.count_visible_rows(
+                view_state.row_sort(),
+                view_state.filter_ast()
+            )
         );
     assert_eq!(view_state.visual_row_selection(), Some(1));
     // Selection still in window
@@ -113,7 +129,10 @@ fn test_row_scroll_tracks_selection() {
     // Move selection to Some(2)
     view_state
         .inc_visual_row_selection(
-            table.count_visible_rows(view_state.filter_ast())
+            table.count_visible_rows(
+                view_state.row_sort(),
+                view_state.filter_ast()
+            )
         );
     assert_eq!(view_state.visual_row_selection(), Some(2));
     // Selection is no longer in window
@@ -123,7 +142,10 @@ fn test_row_scroll_tracks_selection() {
     // Move selection to Some(3)
     view_state
         .inc_visual_row_selection(
-            table.count_visible_rows(view_state.filter_ast())
+            table.count_visible_rows(
+                view_state.row_sort(),
+                view_state.filter_ast()
+            )
         );
     assert_eq!(view_state.visual_row_selection(), Some(3));
     // Selection is no longer in window
@@ -204,3 +226,39 @@ fn test_row_sorting_by_pid() {
         );
     }
 }
+
+#[test]
+fn test_table_visible_rows_with_invalid_filter_string() {
+    let table = ProcessTable::new(test_four_rows());
+
+    let mut view_state = ProcessTableViewState::default();
+
+    // Malformed string
+    let filter_string = "pi d = 1".to_string();
+
+    // Update view_state with malformed string
+    let res = view_state.filter_string_insert_str(&filter_string);
+
+    assert!(res.is_ok());
+
+    // Update view_state filter_ast with malformed string
+    let res = view_state.update_filter_ast();
+
+    // Report error
+    assert!(res.is_err());
+
+    // AST could not be created
+    assert!(view_state.filter_ast().is_none());
+
+    // Default Sort is CpuDec
+    let mut iter = table.visible_rows(
+        view_state.row_sort(),
+        view_state.filter_ast()
+    );
+
+    assert_eq!(iter.next().unwrap().cpu().as_f32(), 4.0);
+    assert_eq!(iter.next().unwrap().cpu().as_f32(), 3.0);
+    assert_eq!(iter.next().unwrap().cpu().as_f32(), 2.0);
+    assert_eq!(iter.next().unwrap().cpu().as_f32(), 1.0);
+}
+
