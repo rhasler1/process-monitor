@@ -1,5 +1,5 @@
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum Sort {
     PidDec,
     PidInc,

@@ -18,6 +18,10 @@ impl ProcessTable {
         }
     }
 
+    pub fn update_rows(&mut self, rows: Vec<Row>) {
+        self.rows = rows
+    }
+
     fn sort_indices(&self, sort: &Sort) -> Vec<usize> {
         let mut indices: Vec<usize> = (0..self.rows.len()).collect();
 
@@ -31,7 +35,6 @@ impl ProcessTable {
             .into_iter()
             .map(|visual_idx| &self.rows[visual_idx])
     }
-
 
     pub fn visible_rows(
         &self,

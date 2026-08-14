@@ -7,7 +7,7 @@ use super::Parser;
 
 use super::{Scroll, AST, ColumnConfig};
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 struct ProcessTableVisualSelection {
     selection: Option<usize>
 }
@@ -66,7 +66,7 @@ impl ProcessTableVisualSelection {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ProcessTableViewState {
     /// AsciiString manages it's own cursor
     filter_string:  AsciiString,
@@ -98,6 +98,14 @@ impl ProcessTableViewState {
     pub fn filter_string_insert_str(&mut self, s: &str) -> Result<(), Error> {
         self.filter_string
             .insert_ascii_str(s).map_err(Error::from)
+    }
+
+    pub fn filter_string_inc_cursor(&mut self) {
+        self.filter_string.inc_cursor();
+    }
+
+    pub fn filter_string_dec_cursor(&mut self) {
+        self.filter_string.dec_cursor();
     }
 
     // Filter: Option<AST> mutators
@@ -179,6 +187,14 @@ impl ProcessTableViewState {
 
     pub fn columns_rotate_unit(&mut self) {
         self.columns.rotate_unit();
+    }
+
+    pub fn columns_inc_selection(&mut self) {
+        self.columns.inc_selection();
+    }
+
+    pub fn columns_dec_selection(&mut self) {
+        self.columns.dec_selection();
     }
 
     // Columns: Columns getters

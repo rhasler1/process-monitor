@@ -70,7 +70,7 @@ impl Operator {
 }
 
 /// Grammar Fields
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Field {
     Pid,
     Cpu,
@@ -78,7 +78,7 @@ pub enum Field {
 }
 
 /// Grammar Values
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Pid(u32),
     Cpu(f32),
@@ -87,7 +87,7 @@ pub enum Value {
 }
 
 /// Represents nonterminal/syntactic structures
-#[derive(Debug,  PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AST {
     Compare {
         field: Field,

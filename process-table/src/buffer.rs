@@ -3,7 +3,7 @@ use super::BufError;
 use std::str::Chars;
 
 /// Guarantees internal buffer is ascii
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub struct AsciiString {
     /// Internal buffer
     buffer: String,

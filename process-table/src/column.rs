@@ -61,6 +61,7 @@ impl ColumnConfig {
 
 /// Manages column configurations and
 /// the currently selected column.
+#[derive(Debug, Clone)]
 pub struct Columns {
     col_configs: Vec<ColumnConfig>,
     selection: Option<usize>
