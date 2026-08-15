@@ -1,96 +1,17 @@
+mod view;
+pub use view::{ProcessTableViewFocus, ProcessTableView, ProcessTableViews};
 
 use process_table::{
-    ProcessTable, ProcessTableViewState, ProcessEntry as Row
+    ProcessTable, ProcessTableState, ProcessEntry as Row
 };
 
 use crate::components::Event;
 use crate::events::EventState;
 use crate::adapters::crossterm::input::Key;
-use crate::config::app_config::Config;
 use crate::domain::process::model::ProcessSnapShot;
 
 
-#[derive(Debug, Default, Clone)]
-pub enum Focus {
-    #[default]
-    Table,
-    Filter
-}
-
-#[derive(Debug, Default)]
-pub struct ProcessTableView {
-    view_state: ProcessTableViewState,
-    /// Table | Filter
-    focus:      Focus
-}
-
-pub struct ProcessTableViews {
-    views:      Vec<ProcessTableView>,
-    /// Index into views
-    selection:  usize,
-}
-
-impl Default for ProcessTableViews {
-    fn default() -> Self {
-        Self {
-            views:      vec![ProcessTableView::default()],
-            selection:  0,
-        }
-    }
-}
-// TODO: Document & Test
-impl ProcessTableViews {
-    pub fn create_new_view_from_existing(&mut self, view: &ProcessTableViewState) {
-        let new_view = view.clone();
-
-        self.views.push(ProcessTableView { view_state: new_view, focus: Focus::Table });
-    }
-
-    pub fn remove_selected_view(&mut self) {
-        if self.views.len() == 1 {
-            // Invariant: At all times views must be non-empty.
-            return
-        }
-
-        self.views.remove(self.selection);
-
-        self.selection = if self.selection == 0 {
-            0
-        } else {
-            self.selection - 1
-        };
-    }
-
-    // Len can never be 1.
-    pub fn inc_selection(&mut self) {
-        let len = self.views.len();
-        let sel = self.selection;
-
-        self.selection = if sel + 1 < len { sel + 1 }
-        else { 0 };
-    }
-
-    // Len can never be 1
-    pub fn dec_selection(&mut self) {
-        let len = self.views.len();
-        let sel = self.selection;
-
-        self.selection = if sel > 0 { sel - 1 }
-        else { len - 1 };
-    }
-
-    // Invariant: selection is always valid, unwrap is safe
-    pub fn active_view(&self) -> &ProcessTableView {
-        self.views.get(self.selection).unwrap()
-    }
-
-    pub fn mut_active_view(&mut self) -> &mut ProcessTableView {
-        self.views.get_mut(self.selection).unwrap()
-    }
-}
-
-
-pub struct TableComponent {
+pub struct ProcessTableComponent {
     table: ProcessTable,
     views: ProcessTableViews,
 }
@@ -107,8 +28,8 @@ impl From<&ProcessSnapShot> for Vec<Row> {
     }
 }
 
-impl TableComponent {
-    pub fn new(snapshot: &ProcessSnapShot, _config: &Config) -> Self {
+impl ProcessTableComponent {
+    pub fn new(snapshot: &ProcessSnapShot) -> Self {
         Self {
             table: ProcessTable::new(snapshot.into()),
             views: ProcessTableViews::default()
@@ -116,7 +37,20 @@ impl TableComponent {
     }
 
     pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) {
+        // Update table rows
         self.table.update_rows(snapshot.into());
+
+        // Update all views selections
+        for view in self.views.mut_views() {
+            // Calculate new row selection upper bound for each view
+            let visible_rows_upper_bound = self.table.count_visible_rows(
+                view.table_state().row_sort(),
+                view.table_state().filter_ast()
+            );
+
+            // Update views row selection
+            view.mut_visual_row_selection().update(visible_rows_upper_bound);
+        }
     }
 
     pub fn table_and_views(&mut self) -> (&ProcessTable, &mut ProcessTableViews) {
@@ -125,67 +59,118 @@ impl TableComponent {
 }
 
 // TODO: Figure out how to capture Ctrl+Tab w/ crossterm
-impl Event for TableComponent {
+impl Event for ProcessTableComponent {
     fn event(&mut self, key: Key) -> EventState {
-        let focus = self.views.active_view().focus.clone();
+        let focus = self.views.active_view().view_focus().clone();
         
         match (key, focus) {
             // Change active view's focus to Filter
-            (Key::Char('/'), Focus::Table) => self.views.mut_active_view().focus = Focus::Filter,
+            (Key::Char('/'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_view_focus().set_to_filter(),
 
             /* Events that change active view*/
             // Go to next active view
-            (Key::PageUp, Focus::Table) => self.views.inc_selection(),
+            (Key::PageUp, ProcessTableViewFocus::Table) =>
+                self.views.inc_selection(),
             // Go to prev active view
-            (Key::PageDown, Focus::Table) => self.views.dec_selection(),
+            (Key::PageDown, ProcessTableViewFocus::Table) =>
+                self.views.dec_selection(),
             
 
             /* Events that cahnge the active view's view state columns */
             // Go to next column
-            (Key::Tab, Focus::Table) => self.views.mut_active_view().view_state.columns_inc_selection(),
+            (Key::Tab, ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().columns_inc_selection(),
             // TODO: KeyModifier: Ctrl + Char for column events
 
             
-            /* Events that change the active view's view state sort*/
+            /* Events that change the active view's table state sort*/
             // Sort by pid decreasing
-            (Key::Char('p'), Focus::Table) => self.views.mut_active_view().view_state.row_sort_by_pid_dec(),
+            (Key::Char('p'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().row_sort_by_pid_dec(),
             // Sort by pid increasing
-            (Key::Char('P'), Focus::Table) => self.views.mut_active_view().view_state.row_sort_by_pid_inc(),
+            (Key::Char('P'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().row_sort_by_pid_inc(),
 
             // Sort by cpu decreasing
-            (Key::Char('c'), Focus::Table) => self.views.mut_active_view().view_state.row_sort_by_cpu_dec(),
+            (Key::Char('c'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().row_sort_by_cpu_dec(),
             // Sort by cpu increasing
-            (Key::Char('C'), Focus::Table) => self.views.mut_active_view().view_state.row_sort_by_cpu_inc(),
+            (Key::Char('C'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().row_sort_by_cpu_inc(),
             
             // Sort by mem decreasing
-            (Key::Char('m'), Focus::Table) => self.views.mut_active_view().view_state.row_sort_by_mem_dec(),
+            (Key::Char('m'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().row_sort_by_mem_dec(),
             // Sort by mem increasing
-            (Key::Char('M'), Focus::Table) => self.views.mut_active_view().view_state.row_sort_by_mem_inc(),
+            (Key::Char('M'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().row_sort_by_mem_inc(),
             
             // Sort by name decreasing
-            (Key::Char('n'), Focus::Table) => self.views.mut_active_view().view_state.row_sort_by_name_dec(),
+            (Key::Char('n'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().row_sort_by_name_dec(),
             // Sort by name increasing
-            (Key::Char('N'), Focus::Table) => self.views.mut_active_view().view_state.row_sort_by_name_inc(),
+            (Key::Char('N'), ProcessTableViewFocus::Table) =>
+                self.views.mut_active_view().mut_table_state().row_sort_by_name_inc(),
+
+            /* Events that change the active view's visual row selection */
+            (Key::Up, ProcessTableViewFocus::Table) => {
+                let visible_rows_upper_bound = self.table.count_visible_rows(
+                    self.views.active_view().table_state().row_sort(),
+                    self.views.active_view().table_state().filter_ast()
+                );
+                self.views.mut_active_view().mut_visual_row_selection().dec_selection(visible_rows_upper_bound);
+            },
+
+            (Key::Down, ProcessTableViewFocus::Table) => {
+                let visible_rows_upper_bound = self.table.count_visible_rows(
+                    self.views.active_view().table_state().row_sort(),
+                    self.views.active_view().table_state().filter_ast()
+                );
+                self.views.mut_active_view().mut_visual_row_selection().inc_selection(visible_rows_upper_bound);
+            }
 
             // TODO: Terminate
 
             /* Events that change the active view's view state filter */
             // Insert char into filter
-            (Key::Char(c), Focus::Filter) => {
-                self.views.mut_active_view().view_state.filter_string_insert_ch(c);
-                self.views.mut_active_view().view_state.update_filter_ast();
+            (Key::Char(c), ProcessTableViewFocus::Filter) => {
+                // Update filer_string & ast
+                self.views.mut_active_view().mut_table_state().filter_string_insert_ch(c);
+                self.views.mut_active_view().mut_table_state().update_filter_ast();
+        
+                // Calculate new row selection upper bound for active view
+                let visible_rows_upper_bound = self.table.count_visible_rows(
+                    self.views.active_view().table_state().row_sort(),
+                    self.views.active_view().table_state().filter_ast()
+                );
+
+                // Update the active view's row selection
+                self.views.mut_active_view().mut_visual_row_selection().update(visible_rows_upper_bound);
             },
             // Remove char from filter
-            (Key::Backspace, Focus::Filter) => {
-                self.views.mut_active_view().view_state.filter_string_remove_ch();
-                self.views.mut_active_view().view_state.update_filter_ast();
+            (Key::Backspace, ProcessTableViewFocus::Filter) => {
+                self.views.mut_active_view().mut_table_state().filter_string_remove_ch();
+                self.views.mut_active_view().mut_table_state().update_filter_ast();
+
+                // Calculate new row selection upper bound for active view
+                let visible_rows_upper_bound = self.table.count_visible_rows(
+                    self.views.active_view().table_state().row_sort(),
+                    self.views.active_view().table_state().filter_ast()
+                );
+
+                // Update the active view's row selection
+                self.views.mut_active_view().mut_visual_row_selection().update(visible_rows_upper_bound);
             },
             // Move cursor forward
-            (Key::Right, Focus::Filter) => self.views.mut_active_view().view_state.filter_string_inc_cursor(),
+            (Key::Right, ProcessTableViewFocus::Filter) =>
+                self.views.mut_active_view().mut_table_state().filter_string_inc_cursor(),
             // Move cursor backwards
-            (Key::Left, Focus::Filter) => self.views.mut_active_view().view_state.filter_string_dec_cursor(),
+            (Key::Left, ProcessTableViewFocus::Filter) =>
+                self.views.mut_active_view().mut_table_state().filter_string_dec_cursor(),
             // Move active view's focus to Table
-            (Key::Enter, Focus::Filter) => self.views.mut_active_view().focus = Focus::Table,
+            (Key::Enter, ProcessTableViewFocus::Filter) =>
+                self.views.mut_active_view().mut_view_focus().set_to_table(),
             
             _ => return EventState::NotConsumed
         }

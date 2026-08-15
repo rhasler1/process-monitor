@@ -7,6 +7,10 @@ use super::Parser;
 
 use super::{Scroll, AST, ColumnConfig};
 
+/*
+ * TODO: ProcessTableVisualSelection has been moved to view,
+ * remove from here
+ * */
 #[derive(Debug, Default, Clone)]
 struct ProcessTableVisualSelection {
     selection: Option<usize>
@@ -67,7 +71,7 @@ impl ProcessTableVisualSelection {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct ProcessTableViewState {
+pub struct ProcessTableState {
     /// AsciiString manages it's own cursor
     filter_string:  AsciiString,
     /// AST that can be derived from AsciiString's buffer
@@ -82,7 +86,7 @@ pub struct ProcessTableViewState {
     row_sort:       Sort
 }
 
-impl ProcessTableViewState {
+impl ProcessTableState {
     // Filter_string: AsciiString mutators
     
     pub fn filter_string_insert_ch(&mut self, ch: char) -> Result<(), Error> {
@@ -112,7 +116,7 @@ impl ProcessTableViewState {
 
     /// The caller is responsible for updating `row_selection`
     /// after calling this method. This method cannot update
-    /// `row_selection` because `ProcessTableViewState` is
+    /// `row_selection` because `ProcessTableState` is
     /// unaware of the row count.
     pub fn update_filter_ast(&mut self) -> Result<(), Error> {
         // Lex
@@ -203,6 +207,13 @@ impl ProcessTableViewState {
         self.columns.get_column_config()
     }
 
+    /*TODO: Most of the getters & mutators here can just return
+     * references to the underlying structures instead of explicitly
+     * delegating. */
+    pub fn columns(&self) -> &Columns {
+        &self.columns
+    }
+
     // row_sort_order: Sort mutators
     
     pub fn row_sort_by_pid_dec(&mut self) {
@@ -273,7 +284,7 @@ mod test {
     fn test_visual_row_selection_invariant_bound_eq_0() {
         let row_count = 0;
 
-        let mut view_state = ProcessTableViewState::default();
+        let mut view_state = ProcessTableState::default();
 
         assert!(view_state.visual_row_selection().is_none());
 
@@ -286,7 +297,7 @@ mod test {
     fn test_inc_visual_row_selection() {
         let row_count = 5;
 
-        let mut view_state = ProcessTableViewState::default();
+        let mut view_state = ProcessTableState::default();
         
         assert!(view_state.visual_row_selection().is_none());
 
@@ -320,7 +331,7 @@ mod test {
     fn test_dec_visual_row_selection() {
         let row_count = 5;
 
-        let mut view_state = ProcessTableViewState::default();
+        let mut view_state = ProcessTableState::default();
 
         assert!(view_state.visual_row_selection().is_none());
 

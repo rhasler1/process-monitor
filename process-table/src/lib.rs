@@ -21,8 +21,8 @@ mod error;
 pub use error::{Error, ParseError, LexError, ColumnError, BufError};
 
 // Strictly view_state & it's dependencies
-mod view_state;
-pub use view_state::ProcessTableViewState;
+mod table_state;
+pub use table_state::ProcessTableState;
 
 mod scroll;
 pub(crate) use scroll::Scroll;

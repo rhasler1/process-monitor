@@ -1,7 +1,9 @@
 // Crossterm event (adapt)=> application input
 use crossterm::event::{
     KeyEvent,
-    KeyCode
+    KeyCode,
+    ModifierKeyCode,
+    //KeyModifiers
 };
 
 #[derive(Clone,Copy,PartialEq,Eq)]
@@ -16,6 +18,8 @@ pub enum Key {
     Left,
     Right,
     Tab,
+    PageUp,
+    PageDown,
     Unknown
 }
 
@@ -32,6 +36,9 @@ impl From<KeyEvent> for Key {
             KeyCode::Left       => Key::Left,
             KeyCode::Right      => Key::Right,
             KeyCode::Tab        => Key::Tab,
+            KeyCode::PageUp     => Key::PageUp,
+            KeyCode::PageDown   => Key::PageDown,
+
             _                   => Key::Unknown
         }
     }

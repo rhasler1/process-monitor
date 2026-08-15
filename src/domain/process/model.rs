@@ -50,7 +50,6 @@ impl ProcessSnapShot {
 
     #[cfg(test)]
     pub fn deserialize(s: &str) -> Self {
-        
         toml::from_str(s).unwrap()
     }
 }

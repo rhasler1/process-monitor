@@ -2,6 +2,7 @@
 use crate::domain::process::primitive::ProcessItem;
 use crate::domain::process::model::ProcessSnapShot;
 use crate::domain::process::ProcessSnapShotSource;
+use sysinfo::{ProcessesToUpdate, ProcessRefreshKind, UpdateKind};
 
 /// Adapter for internal application to communicate with sysinfo API
 pub struct SysinfoDataSource {
@@ -20,8 +21,36 @@ impl Default for SysinfoDataSource {
 
 impl SysinfoDataSource {
     /// Refreshes sysinfo internal structures
+    //pub fn refresh_all(&mut self) {
+    //    self.system.refresh_all();
+    //}
+
     pub fn refresh_all(&mut self) {
-        self.system.refresh_all();
+        self.system.refresh_cpu_all();
+        self.system.refresh_memory();
+
+        // 1. Configure the filter to only fetch what you need (starting with nothing)
+        let process_filter = ProcessRefreshKind::nothing()
+            .with_cpu()
+            .with_memory()
+            .with_cmd(UpdateKind::Always);
+
+        // 2. Refresh the processes in your struct
+        self.system.refresh_processes_specifics(
+            ProcessesToUpdate::All, 
+            true, 
+            process_filter
+        );
+
+        /*let process_filter = ProcessRefreshKind::new()
+            .with_cpu()
+            .with_memory()
+            .with_cmd(UpdateKind::Always); // Tracks command names/arguments
+            
+        self.system.refresh_processes_specifics(
+            ProcessesToUpdate::All, 
+            true, 
+            process_filter);*/
     }
    
     /// Terminate process

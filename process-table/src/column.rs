@@ -261,6 +261,13 @@ impl Columns {
     fn count_columns(&self) -> usize {
         self.col_configs.len()
     }
+
+    
+    // Iterators
+    
+    pub fn columns(&self) -> impl Iterator<Item = &ColumnConfig> {
+        self.col_configs.iter()
+    }
 }
 
 #[cfg(test)]

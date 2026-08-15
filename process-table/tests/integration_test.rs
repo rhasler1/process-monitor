@@ -2,7 +2,7 @@
 // between ProcessTable & ProcessTableViewState.
 
 use process_table::{
-    ProcessEntry as Row, ProcessTable, ProcessTableViewState, Sort,
+    ProcessEntry as Row, ProcessTable, ProcessTableState, Sort,
 };
 
 fn test_four_rows() -> Vec<Row> {
@@ -19,7 +19,7 @@ fn test_filtering_clamps_selection() {
     // Using nonempty rows
     let table = ProcessTable::new(test_four_rows());
 
-    let mut view_state = ProcessTableViewState::default();
+    let mut view_state = ProcessTableState::default();
 
     // Selection is initialized to None.
     assert!(view_state.visual_row_selection().is_none());
@@ -90,7 +90,7 @@ fn test_filtering_clamps_selection() {
 fn test_row_scroll_tracks_selection() {
     let table = ProcessTable::new(test_four_rows());
 
-    let mut view_state = ProcessTableViewState::default();
+    let mut view_state = ProcessTableState::default();
 
     let terminal_height = 2;
 
@@ -157,7 +157,7 @@ fn test_row_scroll_tracks_selection() {
 fn test_row_sorting_by_pid() {
     let table = ProcessTable::new(test_four_rows());
 
-    let mut view_state = ProcessTableViewState::default();
+    let mut view_state = ProcessTableState::default();
 
     assert_eq!(*view_state.row_sort(), Sort::CpuDec);
 
@@ -231,7 +231,7 @@ fn test_row_sorting_by_pid() {
 fn test_table_visible_rows_with_invalid_filter_string() {
     let table = ProcessTable::new(test_four_rows());
 
-    let mut view_state = ProcessTableViewState::default();
+    let mut view_state = ProcessTableState::default();
 
     // Malformed string
     let filter_string = "pi d = 1".to_string();

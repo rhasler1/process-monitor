@@ -11,10 +11,6 @@
  * */
 
 /*
- * TODO: Build a small recursive-descent parser
- *
- * */
-/*
  * Grammar:
  * filter           ::= or_expression
  * or_expression    ::= and_expression ("OR" and_expression)*

@@ -1,5 +1,5 @@
 // 1D scroll
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct Scroll {
     start:  usize,
     count:  usize,

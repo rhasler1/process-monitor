@@ -7,8 +7,6 @@ pub struct ProcessTable {
     rows:       Vec<Row>,
 }
 
-// TODO: Document
-
 impl ProcessTable {
     pub fn new(
         rows: Vec<Row>,
@@ -36,6 +34,7 @@ impl ProcessTable {
             .map(|visual_idx| &self.rows[visual_idx])
     }
 
+    // TODO: Should this take in columns and return a different type?
     pub fn visible_rows(
         &self,
         sort: &Sort,
@@ -68,3 +67,33 @@ impl ProcessTable {
     }
 }
 
+/*
+ * TODO: integrate idea into row.rs
+ *
+ * pub struct ProcessTableRow<'a> {
+    process: &'a Process,
+    columns: &'a Columns,
+}
+ *
+ * impl<'a> ProcessTableRow<'a> {
+    pub fn cells(&self) -> impl Iterator<Item = Cell<'a>> {
+        self.columns.iter().map(|column| {
+            column.cell(self.process)
+        })
+    }
+}
+
+ *let rows = self.process_table
+    .visible_rows(
+        state.active_view().table_state().row_sort(),
+        state.active_view().table_state().filter_ast(),
+    )
+    .skip(row_offset)
+    .take(area.height as usize)
+    .map(|process| {
+        state.active_view()
+            .columns()
+            .cells(process)
+    });
+ *
+ * */

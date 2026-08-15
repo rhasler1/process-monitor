@@ -2,13 +2,15 @@
 use log::{debug, info};
 // Ratatui for rendering and widget creation
 use ratatui::prelude::{Frame, Layout, Direction, Constraint};
+use ratatui::widgets::StatefulWidget;
 // Internal application
 use crate::adapters::crossterm::input::Key;
 use crate::config::app_config::Config;
 use crate::domain::process::model::{ProcessSnapShot};
-use crate::components::process_table::component::TableComponent;
+use crate::components::process_table::ProcessTableComponent;
 use crate::components::process_term::component::Component as ProcTermComponent;
 use crate::events::EventState;
+use crate::widgets::ProcessTableWidget;
 
 use crate::components::{Draw, Event};
 
@@ -21,7 +23,7 @@ pub enum Focus {
 
 pub struct App {
     process_snapshot: ProcessSnapShot, // DomainModel
-    process_table:    TableComponent,  // Component
+    process_table:    ProcessTableComponent,  // Component
     process_term:     ProcTermComponent,
     focus:            Focus
 }
@@ -29,7 +31,7 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         let process_snapshot = ProcessSnapShot::default();
-        let process_table    = TableComponent::from(&process_snapshot);
+        let process_table    = ProcessTableComponent::new(&process_snapshot);
         let process_term     = ProcTermComponent::default();
         let focus            = Focus::default();
 
@@ -45,7 +47,7 @@ impl Default for App {
 impl App {
     pub fn new(config: &Config) -> Self {
         let process_snapshot = ProcessSnapShot::default();
-        let process_table    = TableComponent::new(&process_snapshot, config);
+        let process_table    = ProcessTableComponent::new(&process_snapshot);
         let process_term     = ProcTermComponent::default();
         let focus            = Focus::default();
 
@@ -87,8 +89,26 @@ impl App {
             }
         }
     }
-    
+
     pub fn draw(&mut self, frame: &mut Frame) -> anyhow::Result<()> {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Fill(1),
+            ])
+            .split(frame.size());
+
+        // Get table and views
+        let (table, views) = self.process_table.table_and_views();
+
+        let widget = ProcessTableWidget::new(table);
+        frame.render_stateful_widget(widget, chunks[0], views);
+
+        // TODO: Create widget from table and views
+        Ok(())
+    }
+    
+    /*pub fn draw(&mut self, frame: &mut Frame) -> anyhow::Result<()> {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -112,6 +132,6 @@ impl App {
         }
 
         Ok(())
-    }
+    }*/
 }
 
