@@ -581,11 +581,16 @@ dependencies = [
  "directories",
  "env_logger",
  "log",
+ "process-table",
  "ratatui",
  "serde",
  "sysinfo",
  "toml",
 ]
+
+[[package]]
+name = "process-table"
+version = "0.1.0"
 
 [[package]]
 name = "quote"
