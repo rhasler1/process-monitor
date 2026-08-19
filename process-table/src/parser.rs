@@ -23,9 +23,9 @@
  *
  * */
 
-use crate::ProcessEntry;
+// TODO: This needs to take into account cpu_avg vs cpu_total
 
-use super::{ParseError, Token};
+use super::{ProcessTableRow, ParseError, Token};
 
 /// Grammar Operators
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -95,13 +95,13 @@ pub enum AST {
 }
 
 impl AST {
-    pub fn matches(&self, row: &ProcessEntry) -> bool {
+    pub fn matches(&self, row: &ProcessTableRow<'_>) -> bool {
         match self {
             AST::Compare { field, op, value } => {
                 let field_value = match field {
-                    Field::Pid => Value::Pid(row.pid().as_u32()),
-                    Field::Cpu => Value::Cpu(row.cpu().as_f32()),
-                    Field::Mem => Value::Mem(row.mem().as_u64()),
+                    Field::Pid => Value::Pid(row.process().pid().as_u32()),
+                    Field::Cpu => Value::Cpu(row.process().cpu_total().as_f32()),
+                    Field::Mem => Value::Mem(row.process().mem().as_u64()),
                 };
 
                 op.compare(&field_value, value)

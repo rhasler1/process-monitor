@@ -1,11 +1,3 @@
-/// Supported cpu formats.
-#[derive(Debug, Default, Clone, PartialEq)]
-pub enum CpuUnitOptions {
-    #[default]
-    Average,
-    Total
-}
-
 /// Supported memory formats.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub enum MemoryUnitOptions {
@@ -16,13 +8,44 @@ pub enum MemoryUnitOptions {
     GB
 }
 
+impl MemoryUnitOptions {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::B => "Mem B",
+            Self::KB => "Mem KB",
+            Self::MB => "Mem MB",
+            Self::GB => "Mem GB"
+        }
+    }
+}
+
 /// Supported column types.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Column {
+    // Can be derived from `Process`
     Pid,
-    Cpu(CpuUnitOptions),
+    CpuTotal,
+    CpuAverage,
     Memory(MemoryUnitOptions),
-    Name
+    Name,
+
+    // Can be derived from `ProcessStats`
+    MeanCpuUsageOverLastMinute,
+    MeanCpuUsageAsTotalOverLastMinute,
+}
+
+impl Column {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Pid => "Pid",
+            Self::CpuTotal => "Cpu Total %",
+            Self::CpuAverage => "Cpu Avg %",
+            Self::Memory(unit) => unit.as_str(),
+            Self::MeanCpuUsageAsTotalOverLastMinute => "Cpu Total % / 1 min",
+            Self::MeanCpuUsageOverLastMinute => "Cpu Avg % / 1 min",
+            Self::Name => "Name"
+        }
+    }
 }
 
 /// ColumnConfig associates a Column with it's width.
@@ -77,10 +100,14 @@ impl Default for Columns {
                     width: 10 
                 },
                 ColumnConfig {
-                    column: Column::Cpu(CpuUnitOptions::Total),
+                    column: Column::CpuAverage,
                     width: 10
                 },
-                    ColumnConfig {
+                ColumnConfig {
+                    column: Column::MeanCpuUsageOverLastMinute,
+                    width: 10
+                },
+                ColumnConfig {
                     column: Column::Memory(MemoryUnitOptions::B),
                     width: 10
                 },
@@ -230,9 +257,6 @@ impl Columns {
         let config = self.col_configs.get_mut(selection).unwrap();
 
         let rotated = match config.column() {
-            Column::Cpu(CpuUnitOptions::Total)      => Column::Cpu(CpuUnitOptions::Average),
-            Column::Cpu(CpuUnitOptions::Average)    => Column::Cpu(CpuUnitOptions::Total),
-
             Column::Memory(MemoryUnitOptions::B)    => Column::Memory(MemoryUnitOptions::KB),
             Column::Memory(MemoryUnitOptions::KB)   => Column::Memory(MemoryUnitOptions::MB),
             Column::Memory(MemoryUnitOptions::MB)   => Column::Memory(MemoryUnitOptions::GB),

@@ -1,12 +1,12 @@
 // 1D scroll
 #[derive(Debug, Default, Clone)]
-pub struct Scroll {
+pub struct VisualRowScroll {
     start:  usize,
     count:  usize,
     cursor: usize
 }
 
-impl Scroll {
+impl VisualRowScroll {
     /// `calc_start` does NOT check if the argued cursor is valid over the data
     /// it is indexing; that is the responsibility of the Component state | model
     /// that uses `Scroll`.
@@ -45,15 +45,19 @@ impl Scroll {
         // Return start
         self.start
     }
+
+    pub fn start(&self) -> usize {
+        self.start
+    }
 }
 
 #[cfg(test)]
 pub mod test {
-    use super::Scroll;
+    use super::*;
 
     #[test]
     fn test_utils_scroll() {
-        let mut scroll = Scroll::default();
+        let mut scroll = VisualRowScroll::default();
         let height = 10;
         let cursor = 0;
         let start = scroll.calc_start(height, cursor);

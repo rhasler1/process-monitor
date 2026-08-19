@@ -6,7 +6,8 @@ pub enum Error {
     ParsingError(ParseError),
     LexingError(LexError),
     ColumnsError(ColumnError),
-    BufferError(BufError)
+    BufferError(BufError),
+    ProcessStatsError
 }
 
 
@@ -17,7 +18,8 @@ impl fmt::Display for Error {
             Self::ParsingError(err) => write!(f, "Parse Error: {err}"),
             Self::LexingError(err) => write!(f, "Lex Error: {err}"),
             Self::ColumnsError(err) => write!(f, "Colum Error: {err}"),
-            Self::BufferError(err) => write!(f, "Buffer Error: {err}")
+            Self::BufferError(err) => write!(f, "Buffer Error: {err}"),
+            Self::ProcessStatsError => write!(f, "Process Stats Error")
         }
     }
 }
