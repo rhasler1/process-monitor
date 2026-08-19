@@ -14,6 +14,8 @@ use crate::widgets::ProcessTableWidget;
 
 use crate::components::{Draw, Event};
 
+use anyhow::Result;
+
 #[derive(Default)]
 pub enum Focus {
     #[default]
@@ -28,35 +30,19 @@ pub struct App {
     focus:            Focus
 }
 
-impl Default for App {
-    fn default() -> Self {
-        let process_snapshot = ProcessSnapShot::default();
-        let process_table    = ProcessTableComponent::new(&process_snapshot);
-        let process_term     = ProcTermComponent::default();
-        let focus            = Focus::default();
-
-        Self {
-            process_snapshot,
-            process_table,
-            process_term,
-            focus
-        }
-    }
-}
-
 impl App {
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config) -> Result<Self> {
         let process_snapshot = ProcessSnapShot::default();
-        let process_table    = ProcessTableComponent::new(&process_snapshot);
+        let process_table    = ProcessTableComponent::new(&process_snapshot)?;
         let process_term     = ProcTermComponent::default();
         let focus            = Focus::default();
 
-        Self {
+        Ok(Self {
             process_snapshot,
             process_table,
             process_term,
             focus
-        }
+        })
     }
     
     pub fn model_update(&mut self, process_snapshot: ProcessSnapShot) {

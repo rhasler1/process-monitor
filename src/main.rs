@@ -30,8 +30,15 @@ fn main() -> anyhow::Result<()> {
     // Create config
     let config = Config::default();
 
-    // Create App
-    let mut app = App::new(&config);
+    let mut app = match App::new(&config) {
+        Ok(app) => app,
+        Err(e) => {
+            error!("Error upon app creation: {e}");
+            tear_down()?;
+            std::process::exit(1);
+        }
+    };
+    
     // Create AppEvents MPSC channel
     let app_events = AppEvents::default();
     // Create sysinfo worker

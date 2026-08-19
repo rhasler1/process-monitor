@@ -13,6 +13,11 @@ const DOMAIN:        &str = "io";
 const SOFTWARE_NAME: &str = "process-monitor";
 const FILE_NAME:     &str = "process_monitor.toml";
 
+
+// CONFIG NEEDS TO SUPPORT:
+//  - PROCESS_REFRESH_RATE
+//  - STORE COLUMNS
+//  - STORE SAVED VIEWS?
 pub struct Config {
     columns_config: Option<String>
 }

@@ -19,9 +19,11 @@ pub struct AppEvents {
     _tx: SyncSender<AppEvent>
 }
 
+// TODO: Tick rate is not needed... see edit.rs.
 impl AppEvents {
-    pub const TICK_RATE:    Duration = Duration::from_millis(1024);  // ~0.25s
-    pub const REBUILD_RATE: Duration = Duration::from_millis(2048); // ~2s
+    //pub const TICK_RATE:    Duration = Duration::from_millis(1024);  // ~0.25s
+    pub const TICK_RATE: Duration = Duration::from_secs(1);
+    pub const REBUILD_RATE: Duration = Duration::from_secs(2); // ~2s
     pub const CHANNEL_SIZE: usize = 16;
 
     pub fn next(&self) -> anyhow::Result<AppEvent, std::sync::mpsc::RecvError> {
