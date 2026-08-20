@@ -1,3 +1,6 @@
+// TODO: Add ability to update refresh rate
+// Send message from Main to Worker
+
 // Crossterm mouse and key events are adapted to corresponding AppEvent variants
 use crate::adapters::crossterm::input::{Key};
 // Instant is used to track a time delta for sending Refresh events

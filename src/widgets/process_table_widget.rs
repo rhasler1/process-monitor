@@ -1,8 +1,13 @@
+use crossterm::style::style;
 use process_table::{Column, ProcessTable, MemoryUnitOptions};
-use crate::components::process_table::{ProcessTableViews, ViewsOrientation};
+use crate::components::process_table::{ProcessTableViews, ViewsOrientation, ProcessTableViewFocus};
 
 use ratatui::{
-    layout::{Constraint::Fill, Layout}, prelude::{Buffer, Constraint, Rect}, style::{Color, Style}, text::Span, widgets::{StatefulWidget, TableState},
+    layout::{Constraint::Fill, Layout},
+    prelude::{Buffer, Constraint, Rect},
+    style::{Color, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph, StatefulWidget, TableState, Widget},
 };
 
 use ratatui::widgets::Cell;
@@ -43,7 +48,10 @@ impl StatefulWidget for ProcessTableWidget<'_> {
             for (view_index, view) in state.mut_views().enumerate() {
                 let row_chunks = Layout::vertical(vec![
                     Constraint::Length(1), // Header
-                    Constraint::Fill(1)
+                    Constraint::Length(1), // Border top
+                    Constraint::Fill(1),
+                    Constraint::Length(4), // Filter
+                    Constraint::Length(1), // Border bottom
                 ]).split(view_chunks[view_index]);
 
                 // Get visual row selection, if none, then table is empty, return.
@@ -59,7 +67,7 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                     .mut_table_state()
                     .mut_row_scroll()
                     .calc_start(
-                        row_chunks[1].height as usize,
+                        row_chunks[2].height as usize,
                         visual_row_selection
                     );
             }
@@ -68,8 +76,11 @@ impl StatefulWidget for ProcessTableWidget<'_> {
         for (view_index, view) in state.views().enumerate() {
 
             let row_chunks = Layout::vertical(vec![
+                Constraint::Length(1), // Border
                 Constraint::Length(1), // Header
-                Constraint::Fill(1)
+                Constraint::Fill(1),
+                Constraint::Length(4), // Filter
+                Constraint::Length(1), // Border
             ]).split(view_chunks[view_index]);
 
             // Get visual row selection, if none, then table is empty, return.
@@ -108,13 +119,13 @@ impl StatefulWidget for ProcessTableWidget<'_> {
             let rows = visible_table_rows
                 .enumerate()
                 .skip(visual_row_offset)
-                .take(row_chunks[1].height as usize)
+                .take(row_chunks[2].height as usize)
                 .map(|(visible_index, process_table_row)| {
                     let mut cells: Vec<Cell> = Vec::new();
 
 
                     for (column_index, column_config) in view.table_state().columns().columns().enumerate() {
-                        let mut cell = match column_config.column() {
+                        let cell = match column_config.column() {
                             Column::Pid => {
                                 Cell::from(format!("{:?}", process_table_row.process().pid().as_u32()))
                             }
@@ -153,7 +164,7 @@ impl StatefulWidget for ProcessTableWidget<'_> {
 
                         let style = if let Some(column_selection) = column_selection {
                             if column_selection == column_index {
-                                Style::default().bg(Color::Blue)
+                                Style::default().fg(Color::Black).bg(Color::Cyan)
                             } else {
                                 Style::default()
                             }
@@ -165,7 +176,7 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                     }
 
                     let style = if visible_index == visual_row_selection {
-                        Style::default().bg(Color::Cyan)
+                        Style::default().fg(Color::Black).bg(Color::Cyan)
                     } else {
                         Style::default()
                     };
@@ -193,7 +204,7 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                 .map(|(col_idx, col)| {
                     let style = if let Some(column_selection) = column_selection {
                         if column_selection == col_idx {
-                            Style::default().bg(Color::Blue)
+                            Style::default().fg(Color::Black).bg(Color::Cyan)
                         } else {
                             Style::default()
                         }
@@ -202,13 +213,55 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                     };
                     
                     Cell::new(col.column().as_str()).style(style)
-                }).collect::<Row>().style(Style::default().bg(Color::Green));
+                }).collect::<Row>().style(Style::default().fg(Color::Black).bg(Color::LightBlue));
 
-            let table_widget = Table::new(rows, col_widths).header(header);
+            // This is kind of a hack
+            let border_style = if view_index == state.views_selection() {
+                Style::default().fg(Color::LightBlue)
+            } else {
+                Style::default()
+            };
 
-            table_widget.render(view_chunks[view_index], buf, &mut TableState::default());
+            let table_widget = Table::new(rows, col_widths)
+                .header(header)
+                .block(
+                    Block::default()
+                    .borders(Borders::all())
+                    .title_top(format!(" view {} ", view_index))
+                    .border_style(border_style)
+                );
+
+
+            //StatefulWidget::render(table_widget, view_chunks[view_index], buf, &mut TableState::default());
+            Widget::render(table_widget, view_chunks[view_index], buf);
+                //table_widget.render(view_chunks[view_index], buf, &mut TableState::default());
+            
+            let mut lines = vec![];
+            let filte_err_span = if let Some(err_msg) = view.filter_err_msg() {
+                err_msg
+            } else {
+                ""
+            };
+
+            lines.push(Line::from(vec![Span::from(filte_err_span).style(Style::default().fg(Color::Red))]));
+            let filter_str = "> ".to_owned() + view.table_state().filter_string().as_str();
+            lines.push(Line::from(vec![Span::from(filter_str)]));
+            
+            let filter_chunks = Layout::horizontal(vec![
+                Constraint::Ratio(1, 64),
+                Constraint::Ratio(62, 64),
+                Constraint::Ratio(1, 64)
+            ]).split(row_chunks[3]);
+
+            let filter_widget = Paragraph::new(lines)
+                .block(
+                    Block::default()
+                    .borders(Borders::all())
+                    .title(" Filter ")
+                    .style(Style::default().fg(Color::LightBlue))
+                );
+            
+            filter_widget.render(filter_chunks[1], buf);
         }
     }
 }
-
-

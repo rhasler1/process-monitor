@@ -1,5 +1,5 @@
 // Internal project imports
-use process_monitor::app::App;
+use process_monitor::app::{App, AppEventState};
 use process_monitor::config::app_config::Config;
 use process_monitor::events::app_event::{AppEvent, AppEvents};
 use process_monitor::adapters::crossterm::input::Key;
@@ -105,29 +105,30 @@ fn main() -> anyhow::Result<()> {
         })?;
         match app_events.next()? {
             AppEvent::Key(key) => {
-                let event_state = app.key_event(key);
-                if event_state.is_return_pid() {
-                    // safe to unwrap here
-                    let pid = event_state.pid().unwrap();
-                    match sysinfo_worker.try_send(CallerMessage::TerminateProcess(pid)) {
-                        Ok(_) => { continue }
-                        Err(try_send_err) => {
-                            match try_send_err {
-                                Full(_) => {
-                                    warn!("MPSC channel from `main` to `worker` is FULL");
-                                }
-                                Disconnected(_) => {
-                                    error!("MPSC channel from `main` to `worker` is DISCONNECTED");
-                                break;
+                match app.key_event(key)? {
+                    AppEventState::TerminatePid(pid) => {
+                        match sysinfo_worker.try_send(CallerMessage::TerminateProcess(pid)) {
+                            Ok(_) => { continue }
+                            Err(try_send_err) => {
+                                match try_send_err {
+                                    Full(_) => {
+                                        warn!("MPSC channel from `main` to `worker` is FULL");
+                                    }
+                                    Disconnected(_) => {
+                                        error!("MPSC channel from `main` to `worker` is DISCONNECTED");
+                                        break;
+                                    }
                                 }
                             }
-
                         }
                     }
-                }
-                if !event_state.is_consumed() && key == Key::Esc {
-                    info!("`Main`: event to exit app...");
-                    break;
+                    AppEventState::NotConsumed => {
+                        if matches!(key, Key::Ctrlc) {
+                            info!("`Main`: event to exit app...");
+                            break;
+                        }
+                    }
+                    _ => {}
                 }
             }
             AppEvent::RebuildDomain => {

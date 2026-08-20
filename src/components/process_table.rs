@@ -4,11 +4,10 @@ use std::time::Duration;
 pub use view::{ProcessTableViewFocus, ProcessTableView, ProcessTableViews, ViewsOrientation};
 
 use process_table::{
-    ProcessTable, ProcessTableState, Process, ProcessTableRow, RowSort
+    ColumnConfig, Column, Process, ProcessTable, RowSort, MemoryUnitOptions
 };
 
 use crate::components::Event;
-use crate::events::EventState;
 use crate::adapters::crossterm::input::Key;
 use crate::domain::process::model::ProcessSnapShot;
 
@@ -37,15 +36,29 @@ impl ProcessTableComponent {
         // TODO: time_interval should be provided by config...
         let table = ProcessTable::new(snapshot.into(), Duration::from_secs(2))?;
 
+        let mut views = ProcessTableViews::default();
+
+        // Update row selection
+        let visible_rows_upper_bound = table.count_visible_rows(
+            views.active_view().table_state().row_sort(),
+            views.active_view().table_state().filter_ast()
+        );
+
+        views
+            .mut_active_view()
+            .mut_table_state()
+            .mut_row_selection()
+            .update_selection(visible_rows_upper_bound);
+
         Ok(Self {
             table,
             views: ProcessTableViews::default()
         })
     }
 
-    pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) {
+    pub fn new_snapshot(&mut self, snapshot: &ProcessSnapShot) -> Result<()> {
         // Update table rows
-        self.table.update(snapshot.into());
+        self.table.update(snapshot.into())?;
 
         // Update all views selections
         for view in self.views.mut_views() {
@@ -61,6 +74,8 @@ impl ProcessTableComponent {
                 .mut_row_selection()
                 .update_selection(visible_rows_upper_bound);
         }
+
+        Ok(())
     }
 
     pub fn table_and_views(&mut self) -> (&ProcessTable, &mut ProcessTableViews) {
@@ -68,84 +83,293 @@ impl ProcessTableComponent {
     }
 }
 
-// TODO: Figure out how to capture Ctrl+Tab w/ crossterm
+pub enum ProcessTableEventState {
+    Consumed,
+    NotConsumed,
+    TerminatePid(u32)
+}
+
 impl Event for ProcessTableComponent {
-    fn event(&mut self, key: Key) -> EventState {
+    type EventState = ProcessTableEventState;
+
+    fn event(&mut self, key: Key) -> Result<ProcessTableEventState> {
         let focus = self.views.active_view().view_focus().clone();
         
         match (key, focus) {
-            // Change active view's focus to Filter
-            (Key::Char('/'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_view_focus().set_to_filter(),
+            /* Events that operate on views */
+            
+            (Key::Alts, _) => {
+                self.views
+                    .create_new_view_from_active();
+            }
 
-            // Change avtive view's focus to Columns
-            (Key::Tab, ProcessTableViewFocus::Rows) => {
-                self.views.mut_active_view().mut_view_focus().set_to_columns();
+            (Key::Altd, _) => {
+                self.views
+                    .remove_active_view();
+            }
+
+            (Key::Alth, _) => {
+                self.views
+                    .mut_views_orientation()
+                    .set_to_split_horizontal();
+            }
+
+            (Key::Altv, _) => {
+                self.views
+                    .mut_views_orientation()
+                    .set_to_split_vertical();
+            }
+
+            (Key::AltLeft, _) => {
+                self.views
+                    .dec_selection();
+            }
+
+            (Key::AltRight, _) => {
+                self.views
+                    .inc_selection();
+            }
+
+            /* Events that operate on columns */
+
+            (Key::Left, ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .dec_selection();
+            }
+
+            (Key::Right, ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .inc_selection();
+            }
+
+            (Key::Delete, ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .remove_column();
+            }
+
+            (Key::Char('p'), ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .insert_column(
+                        ColumnConfig::new(
+                            Column::Pid,
+                        )
+                    );
+            }
+
+            (Key::Char('c'), ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .insert_column(
+                        ColumnConfig::new(
+                            Column::CpuAverage,
+                        )
+                    );
+            }
+
+            (Key::Char('C'), ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .insert_column(
+                        ColumnConfig::new(
+                            Column::MeanCpuUsageOverLastMinute,
+                        )
+                    );
+            }
+
+            (Key::Char('t'), ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .insert_column(
+                        ColumnConfig::new(
+                            Column::CpuTotal,
+                        )
+                    );
+            }
+
+            // Can maybe make stats delta t rotate
+            (Key::Char('T'), ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .insert_column(
+                        ColumnConfig::new(
+                            Column::MeanCpuUsageAsTotalOverLastMinute,
+                        )
+                    );
+            }
+
+            (Key::Char('m'), ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .insert_column(
+                        ColumnConfig::new(
+                            Column::Memory(MemoryUnitOptions::B),
+                        )
+                    );
+            }
+
+            (Key::Char('n'), ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .insert_column(
+                        ColumnConfig::new(
+                            Column::Name,
+                        )
+                    );
+            }
+
+            (Key::Char('u'), ProcessTableViewFocus::Columns) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .rotate_unit();
             }
 
             (Key::Tab, ProcessTableViewFocus::Columns) => {
-                self.views.mut_active_view().mut_table_state().mut_columns().inc_selection();
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .deselect();
+
+                self.views
+                    .mut_active_view()
+                    .mut_view_focus()
+                    .set_to_rows();
             }
 
-            (Key::Enter, ProcessTableViewFocus::Columns) => {
-                self.views.mut_active_view().mut_view_focus().set_to_rows();
+            /* Events that operate on rows */
+
+            (Key::Char('/'), ProcessTableViewFocus::Rows) =>
+                self.views
+                .mut_active_view()
+                .mut_view_focus()
+                .set_to_filter(),
+
+            (Key::Tab, ProcessTableViewFocus::Rows) => {
+                self.views
+                    .mut_active_view()
+                    .mut_view_focus()
+                    .set_to_columns();
+                
+                // Init selection       
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_columns()
+                    .inc_selection();
             }
 
-            /* Events that change active view*/
-            // Go to next active view
-            (Key::PageUp, ProcessTableViewFocus::Rows) =>
-                self.views.inc_selection(),
-            // Go to prev active view
-            (Key::PageDown, ProcessTableViewFocus::Rows) =>
-                self.views.dec_selection(),
-            
-            /* Events that change the active view's table state sort*/
-            // Sort by pid decreasing
-            (Key::Char('p'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_table_state().row_sort_by(RowSort::PidDec),
-            // Sort by pid increasing
-            (Key::Char('P'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_table_state().row_sort_by(RowSort::PidInc),
+            (Key::Char('p'), ProcessTableViewFocus::Rows) => {
+                if matches!(
+                    self.views.active_view().table_state().row_sort(),
+                    RowSort::PidDec) {
+                    self.views
+                        .mut_active_view()
+                        .mut_table_state()
+                        .row_sort_by(RowSort::PidInc);
+                } else {
+                    self.views
+                        .mut_active_view()
+                        .mut_table_state()
+                        .row_sort_by(RowSort::PidDec);
+                } 
+            }
 
-            // Sort by cpu decreasing
-            (Key::Char('c'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_table_state().row_sort_by(RowSort::CpuDec),
-            // Sort by cpu increasing
-            (Key::Char('C'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_table_state().row_sort_by(RowSort::CpuInc),
+            (Key::Char('c'), ProcessTableViewFocus::Rows) => {
+                if matches!(
+                    self.views.active_view().table_state().row_sort(),
+                    RowSort::CpuDec) {
+                    self.views
+                        .mut_active_view()
+                        .mut_table_state()
+                        .row_sort_by(RowSort::CpuInc);
+                } else {
+                    self.views
+                        .mut_active_view()
+                        .mut_table_state()
+                        .row_sort_by(RowSort::CpuDec);
+                }
+            }
+
+            (Key::Char('m'), ProcessTableViewFocus::Rows) => {
+                if matches!(
+                    self.views.active_view().table_state().row_sort(),
+                    RowSort::MemDec) {
+                    self.views
+                        .mut_active_view()
+                        .mut_table_state()
+                        .row_sort_by(RowSort::MemInc);
+                } else {
+                    self.views
+                        .mut_active_view()
+                        .mut_table_state()
+                        .row_sort_by(RowSort::MemDec);
+                }
+            }
             
-            // Sort by mem decreasing
-            (Key::Char('m'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_table_state().row_sort_by(RowSort::MemDec),
-            // Sort by mem increasing
-            (Key::Char('M'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_table_state().row_sort_by(RowSort::MemInc),
-            
-            // Sort by name decreasing
-            (Key::Char('n'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_table_state().row_sort_by(RowSort::NameDec),
-            // Sort by name increasing
-            (Key::Char('N'), ProcessTableViewFocus::Rows) =>
-                self.views.mut_active_view().mut_table_state().row_sort_by(RowSort::NameInc),
+            (Key::Char('n'), ProcessTableViewFocus::Rows) => {
+                if matches!(
+                    self.views.active_view().table_state().row_sort(),
+                    RowSort::NameDec) {
+                    self.views
+                        .mut_active_view()
+                        .mut_table_state()
+                        .row_sort_by(RowSort::NameInc);
+                } else {
+                    self.views
+                        .mut_active_view()
+                        .mut_table_state()
+                        .row_sort_by(RowSort::NameDec);
+                }
+            }
 
             /* Events that change the active view's visual row selection */
             (Key::Up, ProcessTableViewFocus::Rows) => {
-                let visible_rows_upper_bound = self.table.count_visible_rows(
-                    self.views.active_view().table_state().row_sort(),
-                    self.views.active_view().table_state().filter_ast()
-                );
+                let visible_rows_upper_bound = self.table
+                    .count_visible_rows(
+                        self.views.active_view().table_state().row_sort(),
+                        self.views.active_view().table_state().filter_ast()
+                    );
+
                 self.views
                     .mut_active_view()
                     .mut_table_state()
                     .mut_row_selection()
                     .dec_selection(visible_rows_upper_bound);
-            },
+            }
 
             (Key::Down, ProcessTableViewFocus::Rows) => {
-                let visible_rows_upper_bound = self.table.count_visible_rows(
-                    self.views.active_view().table_state().row_sort(),
-                    self.views.active_view().table_state().filter_ast()
-                );
+                let visible_rows_upper_bound = self.table
+                    .count_visible_rows(
+                        self.views.active_view().table_state().row_sort(),
+                        self.views.active_view().table_state().filter_ast()
+                    );
+                
                 self.views
                     .mut_active_view()
                     .mut_table_state()
@@ -153,45 +377,56 @@ impl Event for ProcessTableComponent {
                     .inc_selection(visible_rows_upper_bound);
             }
 
-            (Key::Char('s'), ProcessTableViewFocus::Rows) => {
-                // create new view
-                self.views.create_new_view_from_active();
+            (Key::Char('T'), ProcessTableViewFocus::Rows) => {
+                let table_state = self.views.active_view().table_state();
+                
+                if let Some(sel) = table_state.row_selection().selection() &&
+                    let Some(row) = self.table.visible_row(
+                        table_state.row_sort(),
+                        table_state.filter_ast(),
+                        sel) 
+                {
+                    return Ok(ProcessTableEventState::TerminatePid(row.process().pid().as_u32()))
+                }
             }
 
-            (Key::Delete, ProcessTableViewFocus::Rows) => {
-                self.views.remove_active_view();
-            }
+            /* Events that operate on filter */
 
-            (Key::Char('h'), ProcessTableViewFocus::Rows) => {
-                self.views.mut_views_orientation().set_to_split_horizontal();
-            }
-
-            (Key::Char('v'), ProcessTableViewFocus::Rows) => {
-                self.views.mut_views_orientation().set_to_split_vertical();
-            }
-
-            (Key::Left, ProcessTableViewFocus::Rows) => {
-                self.views.dec_selection();
-            }
-
-            (Key::Right, ProcessTableViewFocus::Rows) => {
-                self.views.inc_selection();
-            }
-
-            // TODO: Terminate
-
-            /* Events that change the active view's view state filter */
-            // Insert char into filter
             (Key::Char(c), ProcessTableViewFocus::Filter) => {
                 // Update filer_string & ast
-                self.views.mut_active_view().mut_table_state().mut_filter_string().insert_ascii_ch(c);
-                self.views.mut_active_view().mut_table_state().update_filter_ast();
+                match self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_filter_string()
+                    .insert_ascii_ch(c) {
+                        Err(e) => self.views
+                            .mut_active_view()
+                            .set_filter_err_msg(&e.to_string()),
+                        
+                        Ok(_) => self.views
+                            .mut_active_view()
+                            .set_filter_err_msg_to_none(),
+                    }
+
+                match self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .update_filter_ast() {
+                        Err(e) => self.views
+                            .mut_active_view()
+                            .set_filter_err_msg(&e.to_string()),
+                        
+                        Ok(_) => self.views
+                            .mut_active_view()
+                            .set_filter_err_msg_to_none(),
+                    }
         
                 // Calculate new row selection upper bound for active view
-                let visible_rows_upper_bound = self.table.count_visible_rows(
-                    self.views.active_view().table_state().row_sort(),
-                    self.views.active_view().table_state().filter_ast()
-                );
+                let visible_rows_upper_bound = self.table
+                    .count_visible_rows(
+                        self.views.active_view().table_state().row_sort(),
+                        self.views.active_view().table_state().filter_ast()
+                    );
 
                 // Update the active view's row selection
                 self.views
@@ -199,17 +434,35 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_row_selection()
                     .update_selection(visible_rows_upper_bound);
-            },
+            }
+
             // Remove char from filter
             (Key::Backspace, ProcessTableViewFocus::Filter) => {
-                self.views.mut_active_view().mut_table_state().mut_filter_string().remove_ch();
-                self.views.mut_active_view().mut_table_state().update_filter_ast();
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_filter_string()
+                    .remove_ch();
+                
+                match self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .update_filter_ast() {
+                        Err(e) => self.views
+                            .mut_active_view()
+                            .set_filter_err_msg(&e.to_string()),
+                        
+                        Ok(_) => self.views
+                            .mut_active_view()
+                            .set_filter_err_msg_to_none(),
+                    }
 
                 // Calculate new row selection upper bound for active view
-                let visible_rows_upper_bound = self.table.count_visible_rows(
-                    self.views.active_view().table_state().row_sort(),
-                    self.views.active_view().table_state().filter_ast()
-                );
+                let visible_rows_upper_bound = self.table
+                    .count_visible_rows(
+                        self.views.active_view().table_state().row_sort(),
+                        self.views.active_view().table_state().filter_ast()
+                    );
 
                 // Update the active view's row selection
                 self.views
@@ -217,21 +470,35 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_row_selection()
                     .update_selection(visible_rows_upper_bound);
-            },
-            // Move cursor forward
-            (Key::Right, ProcessTableViewFocus::Filter) =>
-                self.views.mut_active_view().mut_table_state().mut_filter_string().inc_cursor(),
-            // Move cursor backwards
-            (Key::Left, ProcessTableViewFocus::Filter) =>
-                self.views.mut_active_view().mut_table_state().mut_filter_string().dec_cursor(),
-            // Move active view's focus to Table
-            (Key::Enter, ProcessTableViewFocus::Filter) =>
-                self.views.mut_active_view().mut_view_focus().set_to_rows(),
+            }
+
+            (Key::Right, ProcessTableViewFocus::Filter) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_filter_string()
+                    .inc_cursor()
+            }
+
+            (Key::Left, ProcessTableViewFocus::Filter) => {
+                self.views
+                    .mut_active_view()
+                    .mut_table_state()
+                    .mut_filter_string()
+                    .dec_cursor()
+            }
+
+            (Key::Enter, ProcessTableViewFocus::Filter) => {
+                self.views
+                    .mut_active_view()
+                    .mut_view_focus()
+                    .set_to_rows()
+            }
             
-            _ => return EventState::NotConsumed
+            _ => return Ok(ProcessTableEventState::NotConsumed)
         }
         
-        EventState::Consumed
+        Ok(ProcessTableEventState::Consumed)
     }
 }
 

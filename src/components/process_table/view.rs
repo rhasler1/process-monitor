@@ -1,6 +1,14 @@
 use process_table::ProcessTableState;
 
-#[derive(Debug, Default, Clone)]
+use serde::{Deserialize, Serialize};
+
+// TODO: 
+// 1. Write validate_deserialize()
+// 2. Write config component:
+//      - That can: change current configuration (e.g., refresh rate, theme)
+//
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub enum ProcessTableViewFocus {
     Columns,
     #[default]
@@ -22,18 +30,20 @@ impl ProcessTableViewFocus {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ProcessTableView {
     table_state:    ProcessTableState,
     /// Table | Filter
-    focus:          ProcessTableViewFocus
+    filter_err_msg: Option<String>,
+    focus:          ProcessTableViewFocus,
 }
 
 impl ProcessTableView {
     pub fn new_from_existing(&self) -> Self {
         Self {
-            table_state: self.table_state.clone(),
-            focus: self.focus.clone()
+            table_state:    self.table_state.clone(),
+            filter_err_msg: self.filter_err_msg.clone(),
+            focus:          self.focus.clone()
         }
     }
 
@@ -52,8 +62,21 @@ impl ProcessTableView {
     pub fn mut_view_focus(&mut self) -> &mut ProcessTableViewFocus {
         &mut self.focus
     }
+
+    pub fn set_filter_err_msg(&mut self, s: &str) {
+        self.filter_err_msg = Some(s.to_string());
+    }
+
+    pub fn set_filter_err_msg_to_none(&mut self) {
+        self.filter_err_msg = None;
+    }
+
+    pub fn filter_err_msg(&self) -> Option<&String> {
+        self.filter_err_msg.as_ref()
+    }
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum ViewsOrientation {
     SplitHorizontal,
     SplitVertical
@@ -69,6 +92,7 @@ impl ViewsOrientation {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct ProcessTableViews {
     /// Collection of views; can never be empty
     views:              Vec<ProcessTableView>,

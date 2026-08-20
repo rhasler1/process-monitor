@@ -7,14 +7,19 @@ use ratatui::widgets::StatefulWidget;
 use crate::adapters::crossterm::input::Key;
 use crate::config::app_config::Config;
 use crate::domain::process::model::{ProcessSnapShot};
-use crate::components::process_table::ProcessTableComponent;
+use crate::components::process_table::{ProcessTableComponent, ProcessTableEventState};
 use crate::components::process_term::component::Component as ProcTermComponent;
-use crate::events::EventState;
 use crate::widgets::ProcessTableWidget;
 
-use crate::components::{Draw, Event};
+use crate::components::Event;
 
 use anyhow::Result;
+
+pub enum AppEventState {
+    Consumed,
+    NotConsumed,
+    TerminatePid(u32)
+}
 
 #[derive(Default)]
 pub enum Focus {
@@ -50,30 +55,26 @@ impl App {
         self.process_table.new_snapshot(&self.process_snapshot);
     }
 
-    pub fn key_event(&mut self, key: Key) -> EventState {
-        debug!("`App`: key_event()");
+    pub fn key_event(&mut self, key: Key) -> Result<AppEventState> {
         match self.focus {
             Focus::Table => {
-                let mut event_state = self.process_table.event(key);
-                if event_state.is_return_pid() {
-                    // safe to unwrap here
-                    let pid = event_state.pid();
-                    info!("`App`: key_event(): focus = Table: event_state.pid() = {pid:?}");
-                    self.process_term.set(pid);
-                    self.focus = Focus::Termination;
-                    event_state = EventState::Consumed;
+                match self.process_table.event(key)? {
+                    ProcessTableEventState::TerminatePid(pid) => {
+                        // Send pid to terminate component & swap focus
+                    }
+                    ProcessTableEventState::NotConsumed => {
+                        // Check for help screen?
+                    }
+                    ProcessTableEventState::Consumed => {
+                        return Ok(AppEventState::Consumed);
+                    }
                 }
-                event_state
             }
             Focus::Termination => {
-                let event_state = self.process_term.event(key);
-                if event_state.is_consumed() || event_state.is_return_pid() {
-                    self.process_term.set(None);
-                    self.focus = Focus::Table;
-                }
-                event_state
             }
         }
+
+        Ok(AppEventState::NotConsumed)
     }
 
     pub fn draw(&mut self, frame: &mut Frame) -> anyhow::Result<()> {
