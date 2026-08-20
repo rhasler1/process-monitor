@@ -591,6 +591,10 @@ dependencies = [
 [[package]]
 name = "process-table"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml",
+]
 
 [[package]]
 name = "quote"

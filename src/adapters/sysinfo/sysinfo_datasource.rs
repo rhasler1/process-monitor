@@ -2,11 +2,14 @@
 use crate::domain::process::primitive::ProcessItem;
 use crate::domain::process::model::ProcessSnapShot;
 use crate::domain::process::ProcessSnapShotSource;
-use sysinfo::{ProcessesToUpdate, ProcessRefreshKind, UpdateKind};
+use sysinfo::{
+    System,
+    ProcessesToUpdate
+};
 
 /// Adapter for internal application to communicate with sysinfo API
 pub struct SysinfoDataSource {
-    system: sysinfo::System
+    system: System
 }
 
 impl Default for SysinfoDataSource {
@@ -14,45 +17,22 @@ impl Default for SysinfoDataSource {
     /// to fetch system process information
     fn default() -> Self {
         Self {
-            system: sysinfo::System::new_all()
+            // Creates a new System instance with nothing loaded.
+            system: System::new()
         }
     }
 }
 
 impl SysinfoDataSource {
-    /// Refreshes sysinfo internal structures
-    //pub fn refresh_all(&mut self) {
-    //    self.system.refresh_all();
-    //}
 
+    /// Refreshes all processes
     pub fn refresh_all(&mut self) {
-        self.system.refresh_cpu_all();
-        self.system.refresh_memory();
-
-        // 1. Configure the filter to only fetch what you need (starting with nothing)
-        let process_filter = ProcessRefreshKind::nothing()
-            .with_cpu()
-            .with_memory()
-            .with_cmd(UpdateKind::Always);
-
-        // 2. Refresh the processes in your struct
-        self.system.refresh_processes_specifics(
-            ProcessesToUpdate::All, 
-            true, 
-            process_filter
+        self.system.refresh_processes(
+            ProcessesToUpdate::All,
+            true
         );
-
-        /*let process_filter = ProcessRefreshKind::new()
-            .with_cpu()
-            .with_memory()
-            .with_cmd(UpdateKind::Always); // Tracks command names/arguments
-            
-        self.system.refresh_processes_specifics(
-            ProcessesToUpdate::All, 
-            true, 
-            process_filter);*/
     }
-   
+
     /// Terminate process
     pub fn terminate_process(&self, pid: u32) {
         let pid: sysinfo::Pid = sysinfo::Pid::from_u32(pid);
@@ -63,20 +43,22 @@ impl SysinfoDataSource {
 }
 
 impl ProcessSnapShotSource for SysinfoDataSource {
-    /// Gets system process information via sysinfo::System
-    /// Formats system process information to internal application
-    ///
+    /// Fetches snapshot of current system processes.
     fn fetch_process_snapshot(&self) -> ProcessSnapShot {
-        let len = self.system.processes().len();
-        let mut processes: Vec<ProcessItem> = Vec::with_capacity(len);
+        let mut processes = Vec::with_capacity(
+            self.system
+                .processes()
+                .len()
+        );
 
         for (pid, process) in self.system.processes() {
             // Get ownership of [name](sysinfo::process:name)
             let name = process.name().to_os_string();
-            // sysinfo cpu_usage returns total usage over all cores; dividing by core_count to get
-            // an avg usage over all cores
-            let avg_cpu_usage = if let Some(core_count) = sysinfo::System::physical_core_count() {
-                process.cpu_usage() / core_count as f32
+            // sysinfo cpu_usage returns total usage over all cores;
+            // dividing by core_count to get an avg usage over all cores
+            let avg_cpu_usage = 
+                if let Some(core_count) = sysinfo::System::physical_core_count() {
+                    process.cpu_usage() / core_count as f32
             } else {
                 process.cpu_usage()
             };
