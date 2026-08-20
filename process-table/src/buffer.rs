@@ -1,17 +1,76 @@
-use super::BufError;
+use super::{BufError, Error};
 
 use std::str::Chars;
 
+use serde::{Deserialize, Serialize};
+
 /// Guarantees internal buffer is ascii
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AsciiString {
     /// Internal buffer
     buffer: String,
     /// Insert position into buffer
-    cursor: usize
+    cursor: usize,
+    /// Buffer capacity
+    capacity: usize
+}
+
+impl Default for AsciiString {
+    fn default() -> Self {
+        Self {
+            buffer:     String::with_capacity(Self::DEFAULT_MAX_CAPACITY),
+            cursor:     0,
+            capacity:   Self::DEFAULT_MAX_CAPACITY
+        }
+    }
 }
 
 impl AsciiString {
+    const DEFAULT_MAX_CAPACITY: usize = 100;
+
+    /// Validates internal state.
+    ///
+    /// Call after deserializing.
+    pub fn validate_deserialization(&self) -> Result<(), Error> {
+        // Check invariant 1: capacity is less than or equal to the defined max.
+        if self.capacity > Self::DEFAULT_MAX_CAPACITY {
+            return Err(
+                BufError::BadCapacity(
+                    self.capacity
+                ).into()
+            );
+        }
+
+        // Check invariant 2: buffer length is less than or equal to the capacity.
+        if self.buffer.len() > self.capacity {
+            return Err(
+                BufError::BadCapacity(
+                    self.capacity
+                ).into()
+            );
+        }
+
+        // Check invariant 3: buffer is ascii.
+        if !self.buffer.is_ascii() {
+            return Err(
+                BufError::NonAsciiInsertStr(
+                    self.buffer.to_owned()
+                ).into()
+            );
+        }
+
+        // Check invariant 4: cursor position is less than or equal to collection length.
+        if self.cursor > self.buffer.len() {
+            return Err(
+                BufError::InsertPositionOutOfBounds(
+                    self.cursor()
+                ).into()
+            );
+        }
+
+        Ok(())
+    }
+
     /// Inserts ascii character at cursor
     /// position into the buffer.
     ///
@@ -25,9 +84,11 @@ impl AsciiString {
             return Err(BufError::NonAsciiInsertCh(ch))
         }
 
-        self.buffer.insert(self.cursor, ch);
-        self.cursor += 1;
-        
+        if self.buffer.len() < self.buffer.capacity() {
+            self.buffer.insert(self.cursor, ch);
+            self.cursor += 1;
+        }
+
         Ok(())
     }
 
@@ -61,8 +122,11 @@ impl AsciiString {
             return Err(BufError::NonAsciiInsertStr(s.to_string()))
         }
 
-        self.buffer.insert_str(self.cursor, s);
-        self.cursor += s.len();
+        if self.buffer.len() + s.len() < self.buffer.capacity() {
+            self.buffer.insert_str(self.cursor, s);
+            self.cursor += s.len();
+        }
+
 
         Ok(())
     }
@@ -107,6 +171,10 @@ impl AsciiString {
     
     pub fn cursor(&self) -> usize {
         self.cursor
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.capacity
     }
 }
 

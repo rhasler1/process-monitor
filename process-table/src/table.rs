@@ -84,8 +84,21 @@ impl ProcessTable {
         Ok(())
     }
 
+    pub fn visible_row(
+        &self,
+        sort: &RowSort,
+        ast: &Option<AST>,
+        visible_selection: usize
+        ) -> Option<ProcessTableRow<'_>> {
+        self.visible_rows(sort, ast)
+            .nth(visible_selection)
+    }
 
-    pub fn visible_rows(&self, sort: &RowSort, ast: &Option<AST>) -> impl Iterator<Item = ProcessTableRow<'_>> {
+    pub fn visible_rows(
+        &self,
+        sort: &RowSort,
+        ast: &Option<AST>
+        ) -> impl Iterator<Item = ProcessTableRow<'_>> {
         self.rows_sorted(sort)
             .filter(|row| {
                 match ast {

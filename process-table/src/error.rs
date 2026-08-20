@@ -7,7 +7,9 @@ pub enum Error {
     LexingError(LexError),
     ColumnsError(ColumnError),
     BufferError(BufError),
-    ProcessStatsError
+    ProcessStatsError,
+    DeserializeError,
+    SerializeError,
 }
 
 
@@ -19,7 +21,9 @@ impl fmt::Display for Error {
             Self::LexingError(err) => write!(f, "Lex Error: {err}"),
             Self::ColumnsError(err) => write!(f, "Colum Error: {err}"),
             Self::BufferError(err) => write!(f, "Buffer Error: {err}"),
-            Self::ProcessStatsError => write!(f, "Process Stats Error")
+            Self::ProcessStatsError => write!(f, "Process Stats Error"),
+            Self::DeserializeError => write!(f, "Deserialize Error"),
+            Self::SerializeError => write!(f, "SerializeError")
         }
     }
 }
@@ -28,6 +32,18 @@ impl std::error::Error for Error {}
 
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self { Self::Io(err) }
+}
+
+impl From<toml::de::Error> for Error {
+    fn from(_err: toml::de::Error) -> Self {
+        Self::DeserializeError
+    }
+}
+
+impl From<toml::ser::Error> for Error {
+    fn from(_err: toml::ser::Error) -> Self {
+        Self::SerializeError
+    }
 }
 
 impl From<ParseError> for Error {
@@ -68,7 +84,7 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownField(s) => write!(f, "Unkown field: {s}"),
+            Self::UnknownField(s) => write!(f, "Unknown field: {s}"),
             Self::ExpectedField => write!(f, "Expected field"),
             Self::ExpectedOperator => write!(f, "Expected operator"),
             Self::ExpectedNumber => write!(f, "Expected number"),
@@ -96,14 +112,19 @@ impl fmt::Display for LexError {
 
 #[derive(Debug)]
 pub enum ColumnError {
-    BadSelection(usize)
+    BadSelection(usize),
+    BadCapacity(usize)
 }
 
 impl fmt::Display for ColumnError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::BadSelection(visual_selection) => 
+            Self::BadSelection(visual_selection) => {
                 write!(f, "Bad visual selection: {visual_selection}")
+            }
+            Self::BadCapacity(capacity) => {
+                write!(f, "Bad capacity: {capacity}")
+            }
         }
     }
 }
@@ -116,6 +137,7 @@ pub enum BufError {
     InsertPositionNotOnCharBoundary(usize),
     RemovePositionOutOfBounds(usize),
     RemovePositionNotOnCharBoundary(usize),
+    BadCapacity(usize),
 }
 
 impl fmt::Display for BufError {
@@ -138,6 +160,9 @@ impl fmt::Display for BufError {
             }
             Self::RemovePositionNotOnCharBoundary(pos) => {
                 write!(f, "Remove position not on char boundary: {pos}")
+            }
+            Self::BadCapacity(cap) => {
+                write!(f, "Bad capacity value: {cap}")
             }
         }
     }

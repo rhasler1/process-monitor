@@ -31,13 +31,11 @@ pub use parser::{Field, Value, Operator, AST, Parser};
 mod error;
 pub use error::{Error, ParseError, LexError, ColumnError, BufError};
 
-// Strictly view_state & it's dependencies
 mod table_state;
 pub use table_state::ProcessTableState;
 
 mod buffer;
 pub use buffer::AsciiString;
-
 
 mod process_table_row;
 pub use process_table_row::ProcessTableRow;

@@ -1,5 +1,6 @@
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RowSort {
     // Process
     PidDec,

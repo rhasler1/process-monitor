@@ -1,26 +1,50 @@
-use crate::VisualRowScroll;
-
 use super::{AsciiString, AST, Parser, Lexer, VisualRowSelection,
-    Columns, RowSort, Error};
+    VisualRowScroll, Columns, RowSort, Error};
 
-#[derive(Debug, Default, Clone)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ProcessTableState {
     /// AsciiString manages it's own cursor
     filter_string:  AsciiString,
     /// AST that can be derived from AsciiString's buffer
+    #[serde(skip)]
     filter:         Option<AST>,
     /// Column orientation, manages it's own selection
     columns:        Columns,
     /// Row selection (index) in Table's visible rows
+    #[serde(skip)]
     row_selection:  VisualRowSelection,
     /// Calculate row offset
+    #[serde(skip)]
     row_scroll:     VisualRowScroll,
     /// Table row sort order
     row_sort:       RowSort
 }
 
 impl ProcessTableState {
+    /// Validates internal state.
+    ///
+    /// Call after deserializing.
+    pub fn validate_deserialization(&self) -> Result<(), Error> {
+        // Validate filter string's internal state.
+        self.filter_string().validate_deserialization()?;
+
+        // Validate columns internal state.
+        self.columns().validate_deserialization()?;
+
+        // filter, row_selection, row_scroll are
+        // not serialized and upon deserializing
+        // are set to default values, these 
+        // values do not break any invariants.
+
+        // row_sort has no internal invaraints.
+
+        Ok(())
+    }
+
     /* Filter string */
+
     pub fn mut_filter_string(&mut self) -> &mut AsciiString {
         &mut self.filter_string
     }
@@ -77,6 +101,7 @@ impl ProcessTableState {
     }
 
     /* Row scroll */
+
     pub fn mut_row_scroll(&mut self) -> &mut VisualRowScroll {
         &mut self.row_scroll
     }

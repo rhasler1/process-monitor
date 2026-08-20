@@ -5,6 +5,8 @@ pub struct VisualRowSelection {
 }
 
 impl VisualRowSelection {
+
+
     /// Selection invariant for rows in a ProcessTable.
     ///
     /// # Behavior

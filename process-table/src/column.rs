@@ -1,5 +1,12 @@
+use crate::ColumnError;
+
+use super::Error;
+
+use serde::{Serialize, Deserialize};
+
 /// Supported memory formats.
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone,
+    PartialEq, Serialize, Deserialize)]
 pub enum MemoryUnitOptions {
     #[default]
     B,
@@ -11,7 +18,7 @@ pub enum MemoryUnitOptions {
 impl MemoryUnitOptions {
     pub fn as_str(&self) -> &str {
         match self {
-            Self::B => "Mem B",
+            Self::B =>  "Mem B",
             Self::KB => "Mem KB",
             Self::MB => "Mem MB",
             Self::GB => "Mem GB"
@@ -20,7 +27,7 @@ impl MemoryUnitOptions {
 }
 
 /// Supported column types.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Column {
     // Can be derived from `Process`
     Pid,
@@ -48,20 +55,20 @@ impl Column {
     }
 }
 
-/// ColumnConfig associates a Column with it's width.
+/// ColumnConfig no longer associates Column with it's width;
+/// for now, it just wraps Column.
 ///
+/// Old: ColumnConfig associates a Column with it's width.
 /// Width's relation to #Terminal cells is 1:1
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColumnConfig {
     column: Column,
-    width: usize
 }
 
 impl ColumnConfig {
-    pub fn new(column: Column, width: usize) -> Self {
+    pub fn new(column: Column) -> Self {
         Self {
             column,
-            width
         }
     }
 
@@ -72,22 +79,15 @@ impl ColumnConfig {
     pub fn set_column(&mut self, new_col: Column) {
         self.column = new_col;
     }
-
-    pub fn width(&self) -> usize {
-        self.width
-    }
-
-    pub fn set_width(&mut self, new_width: usize) {
-        self.width = new_width;
-    }
 }
 
 /// Manages column configurations and
 /// the currently selected column.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Columns {
-    col_configs: Vec<ColumnConfig>,
-    selection: Option<usize>
+    col_configs:    Vec<ColumnConfig>,
+    selection:      Option<usize>,
+    capacity:       usize
 }
 
 impl Default for Columns {
@@ -97,36 +97,57 @@ impl Default for Columns {
             col_configs: vec![
                 ColumnConfig {
                     column: Column::Pid,
-                    width: 10 
                 },
                 ColumnConfig {
                     column: Column::CpuAverage,
-                    width: 10
                 },
                 ColumnConfig {
                     column: Column::MeanCpuUsageOverLastMinute,
-                    width: 10
                 },
                 ColumnConfig {
                     column: Column::Memory(MemoryUnitOptions::B),
-                    width: 10
                 },
                 ColumnConfig {
                     column: Column::Name,
-                    width: 10
                 }
             ],
-            selection: None
+            selection:  None,
+            capacity:   Self::DEFAULT_MAX_CAPACITY
         }
     }
 }
 
 impl Columns {
+    const DEFAULT_MAX_CAPACITY: usize = 10;
+
+    /// Validates internal state.
+    ///
+    /// Call after deserializing.
+    pub fn validate_deserialization(&self) -> Result<(), Error> {
+        // Invariant 1: Capacity must be less than or equal to Self::DEFAULT_MAX_CAPACITY
+        if self.capacity > Self::DEFAULT_MAX_CAPACITY {
+            return Err(ColumnError::BadCapacity(self.capacity).into());
+        }
+
+        // Invariant 2: Collection length must be less than or equal to capacity.
+        if self.col_configs.len() > self.capacity {
+            return Err(ColumnError::BadCapacity(self.capacity).into())
+        }
+
+        // Invariant 3: Selection must be less than collection length.
+        if let Some(selection) = self.selection && selection >= self.col_configs.len() {
+            return Err(ColumnError::BadSelection(selection).into());
+        }
+
+        Ok(())
+    }
+
     /// Creates an empty Columns structure.
     pub fn new_empty() -> Self {
         Self {
-            col_configs: vec![],
-            selection: None
+            col_configs:    Vec::with_capacity(Self::DEFAULT_MAX_CAPACITY),
+            selection:      None,
+            capacity:       Self::DEFAULT_MAX_CAPACITY,
         }
     }
 
@@ -236,13 +257,15 @@ impl Columns {
         &mut self,
         col_config: ColumnConfig
         ) {
-        match self.selection {
-            Some(selection) => {
-                self.col_configs.insert(selection, col_config);
-            }
-            None => {
-                self.col_configs.insert(0, col_config);
-                self.selection = Some(0)
+        if self.col_configs.len() < self.capacity {
+            match self.selection {
+                Some(selection) => {
+                    self.col_configs.insert(selection, col_config);
+                }
+                None => {
+                    self.col_configs.insert(0, col_config);
+                    self.selection = Some(0)
+                }
             }
         }
     }
@@ -303,14 +326,14 @@ use super::*;
         // Using default constructor.
         let mut columns = Columns::default(); 
         
-        assert_eq!(columns.count_columns(), 4);
+        assert_eq!(columns.count_columns(), 5);
         
         assert!(columns.selection().is_none());
 
         // Column not removed when selection is None & Vec is not empty.
         columns.remove_column();
         
-        assert_eq!(columns.count_columns(), 4);
+        assert_eq!(columns.count_columns(), 5);
 
         // Set selection to Some(0)
         columns.selection = Some(0);
@@ -318,7 +341,7 @@ use super::*;
         // Column is removed when selection is Some & vec is not empty.
         columns.remove_column();
         
-        assert_eq!(columns.count_columns(), 3);
+        assert_eq!(columns.count_columns(), 4);
         
         // Selection is not moved.
         assert_eq!(columns.selection(), Some(0));
@@ -345,7 +368,7 @@ use super::*;
         assert!(columns.selection.is_none());
 
         // Insert into empty columns
-        columns.insert_column(ColumnConfig { column: Column::Pid, width: 10 });
+        columns.insert_column(ColumnConfig { column: Column::Pid });
 
         // Columns count is 1
         assert_eq!(columns.count_columns(), 1);
@@ -354,7 +377,7 @@ use super::*;
         assert_eq!(columns.selection(), Some(0));
 
         // Insert into non empty columns
-        columns.insert_column(ColumnConfig { column: Column::Pid, width: 10 });
+        columns.insert_column(ColumnConfig { column: Column::Pid });
         
         // Coulmns count is 2
         assert_eq!(columns.count_columns(), 2);
@@ -382,7 +405,7 @@ use super::*;
     fn test_inc_selection_nonempty() {
         let mut columns = Columns::default();
 
-        assert_eq!(columns.count_columns(), 4);
+        assert_eq!(columns.count_columns(), 5);
 
         assert!(columns.selection.is_none());
 
@@ -419,7 +442,7 @@ use super::*;
     fn test_dec_selection_nonempty() {
         let mut columns = Columns::default();
 
-        assert_eq!(columns.count_columns(), 4);
+        assert_eq!(columns.count_columns(), 5);
 
         assert!(columns.selection.is_none());
 
@@ -433,7 +456,7 @@ use super::*;
             columns.dec_selection();
         }
 
-        // Selection wraps to Some(2)
-        assert_eq!(columns.selection(), Some(2));
+        // Selection wraps to Some(3)
+        assert_eq!(columns.selection(), Some(3));
     }
 }
