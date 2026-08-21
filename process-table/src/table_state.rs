@@ -1,48 +1,82 @@
-use super::{AsciiString, AST, Parser, Lexer, VisualRowSelection,
-    VisualRowScroll, Columns, RowSort, Error};
+use super::{AsciiString, AsciiStringConfig, AST, Parser, Lexer, VisualRowSelection,
+    VisualRowScroll, Columns, ColumnsConfig, RowSort, Error};
 
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ProcessTableState {
-    /// AsciiString manages it's own cursor
-    filter_string:  AsciiString,
-    /// AST that can be derived from AsciiString's buffer
-    #[serde(skip)]
-    filter:         Option<AST>,
-    /// Column orientation, manages it's own selection
-    columns:        Columns,
-    /// Row selection (index) in Table's visible rows
-    #[serde(skip)]
-    row_selection:  VisualRowSelection,
-    /// Calculate row offset
-    #[serde(skip)]
-    row_scroll:     VisualRowScroll,
-    /// Table row sort order
+/// Decouples persistence from runtime architecture.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessTableStateConfig {
+    filter_string:  AsciiStringConfig,
+    columns:        ColumnsConfig,
     row_sort:       RowSort
 }
 
-impl ProcessTableState {
-    /// Validates internal state.
-    ///
-    /// Call after deserializing.
-    pub fn validate_deserialization(&self) -> Result<(), Error> {
-        // Validate filter string's internal state.
-        self.filter_string().validate_deserialization()?;
-
-        // Validate columns internal state.
-        self.columns().validate_deserialization()?;
-
-        // filter, row_selection, row_scroll are
-        // not serialized and upon deserializing
-        // are set to default values, these 
-        // values do not break any invariants.
-
-        // row_sort has no internal invaraints.
-
-        Ok(())
+impl From<&ProcessTableState> for ProcessTableStateConfig {
+    fn from(table_state: &ProcessTableState) -> Self {
+        Self {
+            filter_string:  AsciiStringConfig::from(&table_state.filter_string),
+            columns:        ColumnsConfig::from(&table_state.columns),
+            row_sort:       table_state.row_sort.clone()
+        }
     }
+}
 
+#[derive(Debug, Default)]
+pub struct ProcessTableState {
+    /// AsciiString manages it's own cursor
+    /// 
+    /// Persistent state
+    filter_string:  AsciiString,
+    /// AST that can be derived from AsciiString's buffer
+    ///
+    /// Runtime state
+    filter:         Option<AST>,
+    /// Column orientation, manages it's own selection
+    ///
+    /// Persistent state
+    columns:        Columns,
+    /// Row selection (index) in Table's visible rows
+    ///
+    /// Runtime state
+    row_selection:  VisualRowSelection,
+    /// Calculate row offset
+    ///
+    /// Runtime state
+    row_scroll:     VisualRowScroll,
+    /// Table row sort order
+    ///
+    /// Persistent state
+    row_sort:       RowSort
+}
+
+impl TryFrom<&ProcessTableStateConfig> for ProcessTableState {
+    type Error = Error;
+
+    fn try_from(config: &ProcessTableStateConfig) -> Result<Self, Error> {
+        let filter_string_config = config.filter_string.clone();
+        // Validation
+        let filter_string = AsciiString::try_from(&filter_string_config)?;
+
+        let columns_config = config.columns.clone();
+        // Validation
+        let columns = Columns::try_from(&columns_config)?;
+
+        // Row sort does not have internal
+        // state that needs validation.
+        let row_sort = config.row_sort.clone();
+
+        Ok(Self {
+            filter_string,
+            filter:         None,
+            columns,
+            row_selection:  VisualRowSelection::default(),
+            row_scroll:     VisualRowScroll::default(),
+            row_sort,
+        })
+    }
+}
+
+impl ProcessTableState {
     /* Filter string */
 
     pub fn mut_filter_string(&mut self) -> &mut AsciiString {

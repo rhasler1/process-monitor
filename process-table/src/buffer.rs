@@ -4,8 +4,23 @@ use std::str::Chars;
 
 use serde::{Deserialize, Serialize};
 
-/// Guarantees internal buffer is ascii
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AsciiStringConfig {
+    buffer: String
+}
+
+impl From<&AsciiString> for AsciiStringConfig {
+    fn from(s: &AsciiString) -> Self {
+        Self {
+            buffer: s.buffer.clone()
+        }
+    }
+}
+
+/// Guarantees internal buffer is ascii.
+///
+/// Couples persistence with runtime architecture.
+#[derive(Debug, Clone)]
 pub struct AsciiString {
     /// Internal buffer
     buffer: String,
@@ -13,6 +28,34 @@ pub struct AsciiString {
     cursor: usize,
     /// Buffer capacity
     capacity: usize
+}
+
+impl TryFrom<&AsciiStringConfig> for AsciiString {
+    type Error = Error;
+
+    fn try_from(config: &AsciiStringConfig) -> Result<Self, Error> {
+        let buffer = config.buffer.clone();
+        // Safe default
+        let cursor = 0;
+        // Safe default
+        let capacity = Self::DEFAULT_MAX_CAPACITY;
+
+        // Invariant 1: Buffer must be ascii
+        if !buffer.is_ascii() {
+            return Err(BufError::NonAsciiInsertStr(buffer).into())
+        }
+
+        // Invariant 2: Buffer len cannot surpass capacity.
+        if buffer.len() > capacity {
+            return Err(BufError::BadCapacity(capacity).into())
+        }
+
+        Ok(Self {
+            buffer,
+            cursor,
+            capacity
+        })
+    }
 }
 
 impl Default for AsciiString {
@@ -27,50 +70,7 @@ impl Default for AsciiString {
 
 impl AsciiString {
     const DEFAULT_MAX_CAPACITY: usize = 100;
-
-    /// Validates internal state.
-    ///
-    /// Call after deserializing.
-    pub fn validate_deserialization(&self) -> Result<(), Error> {
-        // Check invariant 1: capacity is less than or equal to the defined max.
-        if self.capacity > Self::DEFAULT_MAX_CAPACITY {
-            return Err(
-                BufError::BadCapacity(
-                    self.capacity
-                ).into()
-            );
-        }
-
-        // Check invariant 2: buffer length is less than or equal to the capacity.
-        if self.buffer.len() > self.capacity {
-            return Err(
-                BufError::BadCapacity(
-                    self.capacity
-                ).into()
-            );
-        }
-
-        // Check invariant 3: buffer is ascii.
-        if !self.buffer.is_ascii() {
-            return Err(
-                BufError::NonAsciiInsertStr(
-                    self.buffer.to_owned()
-                ).into()
-            );
-        }
-
-        // Check invariant 4: cursor position is less than or equal to collection length.
-        if self.cursor > self.buffer.len() {
-            return Err(
-                BufError::InsertPositionOutOfBounds(
-                    self.cursor()
-                ).into()
-            );
-        }
-
-        Ok(())
-    }
-
+    
     /// Inserts ascii character at cursor
     /// position into the buffer.
     ///

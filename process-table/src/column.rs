@@ -1,10 +1,10 @@
-use crate::ColumnError;
-
 use super::Error;
 
 use serde::{Serialize, Deserialize};
 
 /// Supported memory formats.
+/// 
+/// Does not include runtime architecture.
 #[derive(Debug, Default, Clone,
     PartialEq, Serialize, Deserialize)]
 pub enum MemoryUnitOptions {
@@ -27,8 +27,10 @@ impl MemoryUnitOptions {
 }
 
 /// Supported column types.
+///
+/// Does not include runtime architecture.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Column {
+pub enum ColumnOptions {
     // Can be derived from `Process`
     Pid,
     CpuTotal,
@@ -41,75 +43,68 @@ pub enum Column {
     MeanCpuUsageAsTotalOverLastMinute,
 }
 
-impl Column {
+impl ColumnOptions{
     pub fn as_str(&self) -> &str {
         match self {
             Self::Pid => "Pid",
-            Self::CpuTotal => "Cpu Total %",
-            Self::CpuAverage => "Cpu Avg %",
+            Self::CpuTotal => "CpuT%",
+            Self::CpuAverage => "CpuA%",
             Self::Memory(unit) => unit.as_str(),
-            Self::MeanCpuUsageAsTotalOverLastMinute => "Cpu Total % / 1 min",
-            Self::MeanCpuUsageOverLastMinute => "Cpu Avg % / 1 min",
+            Self::MeanCpuUsageAsTotalOverLastMinute => "CpuT%/60s",
+            Self::MeanCpuUsageOverLastMinute => "CpuA%/60s",
             Self::Name => "Name"
         }
     }
 }
 
-/// ColumnConfig no longer associates Column with it's width;
-/// for now, it just wraps Column.
-///
-/// Old: ColumnConfig associates a Column with it's width.
-/// Width's relation to #Terminal cells is 1:1
+/// Configuration structure that decouples
+/// persistence from runtime architecture.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ColumnConfig {
-    column: Column,
+pub struct ColumnsConfig {
+    columns: Vec<ColumnOptions>
 }
 
-impl ColumnConfig {
-    pub fn new(column: Column) -> Self {
+impl From<&Columns> for ColumnsConfig {
+    fn from(columns: &Columns) -> Self {
         Self {
-            column,
+            columns: columns.columns.clone()
         }
     }
-
-    pub fn column(&self) -> &Column {
-        &self.column
-    }
-
-    pub fn set_column(&mut self, new_col: Column) {
-        self.column = new_col;
-    }
 }
 
-/// Manages column configurations and
-/// the currently selected column.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Manages selection, insertion, and
+/// deletion into a vector of columns.
+///
+/// Couples persistent and runtime architecture.
+#[derive(Debug, Clone)]
 pub struct Columns {
-    col_configs:    Vec<ColumnConfig>,
-    selection:      Option<usize>,
-    capacity:       usize
+    columns:    Vec<ColumnOptions>,
+    selection:  Option<usize>,
+    capacity:   usize
+}
+
+impl TryFrom<&ColumnsConfig> for Columns {
+    type Error = Error;
+    
+    fn try_from(config: &ColumnsConfig) -> Result<Self, Error> {
+        Ok(Self {
+            columns:    config.columns.clone(),
+            selection:  None,
+            capacity:   Self::DEFAULT_MAX_CAPACITY
+        })
+    }
 }
 
 impl Default for Columns {
     /// Default implementation
     fn default() -> Self {
         Self {
-            col_configs: vec![
-                ColumnConfig {
-                    column: Column::Pid,
-                },
-                ColumnConfig {
-                    column: Column::CpuAverage,
-                },
-                ColumnConfig {
-                    column: Column::MeanCpuUsageOverLastMinute,
-                },
-                ColumnConfig {
-                    column: Column::Memory(MemoryUnitOptions::B),
-                },
-                ColumnConfig {
-                    column: Column::Name,
-                }
+            columns: vec![
+                ColumnOptions::Pid,
+                ColumnOptions::CpuAverage,
+                ColumnOptions::MeanCpuUsageOverLastMinute,
+                ColumnOptions::Memory(MemoryUnitOptions::B),
+                ColumnOptions::Name,
             ],
             selection:  None,
             capacity:   Self::DEFAULT_MAX_CAPACITY
@@ -119,33 +114,11 @@ impl Default for Columns {
 
 impl Columns {
     const DEFAULT_MAX_CAPACITY: usize = 10;
-
-    /// Validates internal state.
-    ///
-    /// Call after deserializing.
-    pub fn validate_deserialization(&self) -> Result<(), Error> {
-        // Invariant 1: Capacity must be less than or equal to Self::DEFAULT_MAX_CAPACITY
-        if self.capacity > Self::DEFAULT_MAX_CAPACITY {
-            return Err(ColumnError::BadCapacity(self.capacity).into());
-        }
-
-        // Invariant 2: Collection length must be less than or equal to capacity.
-        if self.col_configs.len() > self.capacity {
-            return Err(ColumnError::BadCapacity(self.capacity).into())
-        }
-
-        // Invariant 3: Selection must be less than collection length.
-        if let Some(selection) = self.selection && selection >= self.col_configs.len() {
-            return Err(ColumnError::BadSelection(selection).into());
-        }
-
-        Ok(())
-    }
-
+    
     /// Creates an empty Columns structure.
     pub fn new_empty() -> Self {
         Self {
-            col_configs:    Vec::with_capacity(Self::DEFAULT_MAX_CAPACITY),
+            columns:        Vec::with_capacity(Self::DEFAULT_MAX_CAPACITY),
             selection:      None,
             capacity:       Self::DEFAULT_MAX_CAPACITY,
         }
@@ -237,12 +210,12 @@ impl Columns {
             return
         };
 
-        self.col_configs.remove(selection);
+        self.columns.remove(selection);
 
-        if self.col_configs.is_empty() {
+        if self.columns.is_empty() {
             self.selection = None
-        } else if selection >= self.col_configs.len() {
-            self.selection = Some(self.col_configs.len() - 1)
+        } else if selection >= self.columns.len() {
+            self.selection = Some(self.columns.len() - 1)
         }
     }
 
@@ -255,15 +228,15 @@ impl Columns {
     ///   selection.
     pub fn insert_column(
         &mut self,
-        col_config: ColumnConfig
+        col: ColumnOptions
         ) {
-        if self.col_configs.len() < self.capacity {
+        if self.columns.len() < self.capacity {
             match self.selection {
                 Some(selection) => {
-                    self.col_configs.insert(selection, col_config);
+                    self.columns.insert(selection, col);
                 }
                 None => {
-                    self.col_configs.insert(0, col_config);
+                    self.columns.insert(0, col);
                     self.selection = Some(0)
                 }
             }
@@ -277,26 +250,28 @@ impl Columns {
         };
 
         // Safe to unwrap here
-        let config = self.col_configs.get_mut(selection).unwrap();
+        let column = self.columns.get_mut(selection).unwrap();
 
-        let rotated = match config.column() {
-            Column::Memory(MemoryUnitOptions::B)    => Column::Memory(MemoryUnitOptions::KB),
-            Column::Memory(MemoryUnitOptions::KB)   => Column::Memory(MemoryUnitOptions::MB),
-            Column::Memory(MemoryUnitOptions::MB)   => Column::Memory(MemoryUnitOptions::GB),
-            Column::Memory(MemoryUnitOptions::GB)   => Column::Memory(MemoryUnitOptions::B),
+        let rotated = match column {
+            ColumnOptions::Memory(MemoryUnitOptions::B)    => ColumnOptions::Memory(MemoryUnitOptions::KB),
+            ColumnOptions::Memory(MemoryUnitOptions::KB)   => ColumnOptions::Memory(MemoryUnitOptions::MB),
+            ColumnOptions::Memory(MemoryUnitOptions::MB)   => ColumnOptions::Memory(MemoryUnitOptions::GB),
+            ColumnOptions::Memory(MemoryUnitOptions::GB)   => ColumnOptions::Memory(MemoryUnitOptions::B),
 
             _ => return
         };
 
-        config.set_column(rotated);
+        *column = rotated;
+
+        //config.set_column(rotated);
     }
 
     // Column_configs getters
 
     /// Gets reference to the selected column_config.
-    pub fn get_column_config(&self) -> Option<&ColumnConfig> {
+    pub fn get_column(&self) -> Option<&ColumnOptions> {
         if let Some(selection) = self.selection {
-            self.col_configs.get(selection)
+            self.columns.get(selection)
         } else {
             None
         }
@@ -306,14 +281,14 @@ impl Columns {
 
     /// Wrapper over `self.col_configs.len()`
     fn count_columns(&self) -> usize {
-        self.col_configs.len()
+        self.columns.len()
     }
 
     
     // Iterators
     
-    pub fn columns(&self) -> impl Iterator<Item = &ColumnConfig> {
-        self.col_configs.iter()
+    pub fn columns(&self) -> impl Iterator<Item = &ColumnOptions> {
+        self.columns.iter()
     }
 }
 
@@ -368,7 +343,7 @@ use super::*;
         assert!(columns.selection.is_none());
 
         // Insert into empty columns
-        columns.insert_column(ColumnConfig { column: Column::Pid });
+        columns.insert_column(ColumnOptions::Pid);
 
         // Columns count is 1
         assert_eq!(columns.count_columns(), 1);
@@ -377,7 +352,7 @@ use super::*;
         assert_eq!(columns.selection(), Some(0));
 
         // Insert into non empty columns
-        columns.insert_column(ColumnConfig { column: Column::Pid });
+        columns.insert_column(ColumnOptions::Pid);
         
         // Coulmns count is 2
         assert_eq!(columns.count_columns(), 2);

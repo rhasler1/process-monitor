@@ -20,7 +20,7 @@ mod row_sort;
 pub use row_sort::RowSort;
 
 mod column;
-pub use column::{Columns, ColumnConfig, Column, MemoryUnitOptions};
+pub use column::{Columns, ColumnsConfig, ColumnOptions, MemoryUnitOptions};
 
 mod lexer;
 pub use lexer::{Token, Lexer};
@@ -32,10 +32,10 @@ mod error;
 pub use error::{Error, ParseError, LexError, ColumnError, BufError};
 
 mod table_state;
-pub use table_state::ProcessTableState;
+pub use table_state::{ProcessTableState, ProcessTableStateConfig};
 
 mod buffer;
-pub use buffer::AsciiString;
+pub use buffer::{AsciiString, AsciiStringConfig};
 
 mod process_table_row;
 pub use process_table_row::ProcessTableRow;
