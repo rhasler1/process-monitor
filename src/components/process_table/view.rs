@@ -76,7 +76,7 @@ impl ProcessTableView {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ViewsOrientation {
     SplitHorizontal,
     SplitVertical
@@ -92,7 +92,7 @@ impl ViewsOrientation {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessTableViews {
     /// Collection of views; can never be empty
     views:              Vec<ProcessTableView>,
@@ -104,7 +104,6 @@ pub struct ProcessTableViews {
     views_orientation:  ViewsOrientation,
     /// Maximum number of ProcessTableView in views
     capacity: usize
-
 }
 
 impl Default for ProcessTableViews {
@@ -113,7 +112,7 @@ impl Default for ProcessTableViews {
             views:              vec![ProcessTableView::default()],
             views_selection:    0,
             views_orientation:  ViewsOrientation::SplitVertical,
-            capacity: Self::DEFAULT_CAPACITY
+            capacity:           Self::DEFAULT_CAPACITY
         }
     }
 }

@@ -4,6 +4,7 @@ pub mod process_table;
 pub mod process_term;
 pub mod text_line;
 pub mod utils;
+pub mod config_manager;
 
 use crate::adapters::crossterm::input::Key;
 

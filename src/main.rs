@@ -3,29 +3,68 @@ use process_monitor::app::{App, AppEventState};
 use process_monitor::config::app_config::Config;
 use process_monitor::events::app_event::{AppEvent, AppEvents};
 use process_monitor::adapters::crossterm::input::Key;
+use process_monitor::services::config_worker::{ConfigCallerMessage, ConfigWorker, ConfigWorkerMessage};
 use process_monitor::services::sysinfo_worker::{SysinfoWorker, CallerMessage, WorkerMessage};
+use process_monitor::terminal::{restore_terminal, setup_terminal};
+use serde::de::Error;
 // std library import
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::TrySendError::{Disconnected, Full};
+
+use anyhow::{anyhow, Result};
 // log
 use log::{debug, info, warn, error};
 
 
+
+// 1. Setup logger
+// 2. Setup config worker
+// 3. Setup sysinfo worker
+// 4. Setup App
+// 5. Setup AppEvents
+// 6. Setup terminal
+// 7. Enter main ui event loop
+//
 fn main() -> anyhow::Result<()> {
-    // Logger init
     env_logger::init();
     info!("Logger initialized");
+    
     // Terminal setup
-    let backend = ratatui::backend::CrosstermBackend::new(
-        std::io::stdout());
-    let mut terminal = ratatui::Terminal::new(backend)?;
-    crossterm::terminal::enable_raw_mode()?;
-    crossterm::execute!(
-        std::io::stdout(),
-        crossterm::terminal::EnterAlternateScreen,
-        crossterm::event::EnableMouseCapture)?;
-    terminal.clear()?;
+    let mut terminal = setup_terminal()
+        .inspect_err(|e| {
+            error!("Terminal setup error: {:?}", e)
+        })?;
+
     info!("Terminal setup complete");
+
+    // Config thread setup
+    let config_worker = ConfigWorker::default();
+    
+    // Build config directory if it does not already exist
+    config_worker
+        .send(ConfigCallerMessage::BuildConfigDir)
+        .map_err(|e| Err(e))?;
+
+
+    let msg = config_worker
+        .next()
+        .map_err(|e| Err(e))?;
+
+    if matches!(msg, ConfigWorkerMessage::Error(e)) {
+        return Err(e);
+    }
+
+
+
+    // Wait for config worker's response
+
+    // TODO: Leaving off here
+    // - Finish implementing ConfigWorker
+
+    // Check config directory for existing config
+    //match config_worker.send(ConfigCallerMessage::ReadConfig) {
+    //    Ok(c)
+    //}
 
     // Create config
     let config = Config::default();
