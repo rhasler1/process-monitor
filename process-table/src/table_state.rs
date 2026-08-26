@@ -21,7 +21,7 @@ impl From<&ProcessTableState> for ProcessTableStateConfig {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ProcessTableState {
     /// AsciiString manages it's own cursor
     /// 

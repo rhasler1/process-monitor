@@ -1,5 +1,6 @@
+// TODO: Write unit tests
 use anyhow::{anyhow, Result};
-use log::{debug, warn};
+use log::{debug, warn, error};
 use directories::ProjectDirs;
 
 use std::fs;
@@ -36,29 +37,156 @@ pub struct ConfigWorker {
     tx: SyncSender<ConfigCallerMessage>
 }
 
+impl Default for ConfigWorker {
+    fn default() -> Self {
+        const DEFAULT_CHANNEL_CAPACITY: usize = 2;
+
+        // This channel is used for communication from `main` thread to `worker` thread
+        let (to_caller_tx, from_worker_rx) = sync_channel(DEFAULT_CHANNEL_CAPACITY);
+        
+        // This channel is used for communication from `worker` thread to `main` thread 
+        let (to_worker_tx, from_caller_rx) = sync_channel(DEFAULT_CHANNEL_CAPACITY);
+
+        thread::spawn(move || -> Result<()> {
+            Self::event_loop(&from_caller_rx, &to_caller_tx)
+        });
+
+        Self { rx: from_worker_rx, tx: to_worker_tx }
+    }
+}
+
 impl ConfigWorker {
-    // `try_next` is non-blocking
-    // Returns: Ok(WorkerMessage) or Err(TryRecvError::Empty) or Err(TryRecvError::Disconnected)
+    /// `try_next` is non-blocking
+    //
+    /// # Returns
+    /// - Ok(ConfigWorkerMessage)
+    /// - Err(TryRecvError::Empty)
+    /// - Err(TryRecvError::Disconnected)
     pub fn try_next(&self) -> Result<ConfigWorkerMessage, TryRecvError> {
         self.rx.try_recv()
     }
 
+    /// `next` is blocking
+    ///
+    /// # Returns
+    /// - Ok(ConfigWorkerMessage)
+    /// - Err if the receiver is disconnected
     pub fn next(&self) -> Result<ConfigWorkerMessage, RecvError> {
         self.rx.recv()
     }
 
+    /// `try_send` is non-blocking
+    ///
+    /// # Returns
+    /// - Ok()
+    /// - Err(TrySendErr::Full)
+    /// - Err(TrySendErr::Disconnected)
+    pub fn try_send(
+        &self,
+        msg: ConfigCallerMessage
+    ) -> Result<(), TrySendError<ConfigCallerMessage>> {
+        self.tx.try_send(msg)
+    }
+
     /// `send` is blocking
-    /// Returns Error if the receiver is disconnected
-    pub fn send(&self, msg: ConfigCallerMessage) -> Result<(), SendError<ConfigCallerMessage>> {
+    ///
+    /// # Returns
+    /// Error if the receiver is disconnected
+    pub fn send(
+        &self,
+        msg: ConfigCallerMessage
+    ) -> Result<(), SendError<ConfigCallerMessage>> {
         self.tx.send(msg)
     }
-    
-    /// `try_send` is non-blocking
-    pub fn try_send(&self, msg: ConfigCallerMessage) -> Result<(), TrySendError<ConfigCallerMessage>> {
-        self.tx.try_send(msg)
+
+    /// Config worker event loop
+    ///
+    /// # Returns
+    /// - Err if the channel disconnects
+    fn event_loop(
+        from_caller_rx: &Receiver<ConfigCallerMessage>,
+        to_caller_tx:   &SyncSender<ConfigWorkerMessage>
+    ) -> Result<()> {
+        loop {
+            match from_caller_rx.recv() {
+                Ok(ConfigCallerMessage::BuildConfigDir) => {
+                    match build_proj_dir() {
+                        Ok(_) => {
+                            if !send_worker_message(
+                                to_caller_tx,
+                                ConfigWorkerMessage::DoneBuildingConfigDir
+                            ) {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            if !send_worker_message(
+                                to_caller_tx,
+                                ConfigWorkerMessage::Error(e)
+                            ) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                Ok(ConfigCallerMessage::WriteConfig(s)) => {
+                    match write_config(s) {
+                        Ok(_) => {
+                            if !send_worker_message(
+                                to_caller_tx,
+                                ConfigWorkerMessage::DoneWritingConfig
+                            ) {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            if !send_worker_message(
+                                to_caller_tx,
+                                ConfigWorkerMessage::Error(e)
+                            ) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                Ok(ConfigCallerMessage::ReadConfig) => {
+                    match read_config() {
+                        Ok(s) => {
+                            if !send_worker_message(
+                                to_caller_tx,
+                                ConfigWorkerMessage::DoneReadingConfig(s)
+                            ) {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            if !send_worker_message(
+                                to_caller_tx,
+                                ConfigWorkerMessage::Error(e)
+                            ) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                Err(_recv_err) => {
+                    break;
+                }
+            }
+        }
+
+        Err(anyhow!("channel disconnected"))
     }
 }
 
+/// Sends `msg` using `tx`
+///
+/// # Behavior
+/// - Blocking
+///
+/// # Returns
+/// - True if the `msg` is successfully sent
+/// - False if the receiver is disconnected
 fn send_worker_message(
     tx: &SyncSender<ConfigWorkerMessage>,
     msg: ConfigWorkerMessage
@@ -66,93 +194,9 @@ fn send_worker_message(
     match tx.send(msg) {
         Ok(_) => true,
         Err(SendError(_e)) => {
-            warn!("receiver is disconnected");
+            error!("receiver is disconnected");
             false
         }
-    }
-}
-
-impl Default for ConfigWorker {
-    fn default() -> Self {
-        const CHANNEL_CAPACITY: usize = 2;
-
-        // This channel is used for communication from `main` thread to `worker` thread
-        let (to_caller_tx, from_worker_rx) = sync_channel(CHANNEL_CAPACITY);
-        
-        // This channel is used for communication from `worker` thread to `main` thread 
-        let (to_worker_tx, from_caller_rx) = sync_channel(CHANNEL_CAPACITY);
-
-        thread::spawn(move || {
-            loop {
-                match from_caller_rx.recv() {
-                    Ok(ConfigCallerMessage::BuildConfigDir) => {
-                        match build_proj_dir() {
-                            Ok(_) => {
-                                if !send_worker_message(
-                                    &to_caller_tx,
-                                    ConfigWorkerMessage::DoneBuildingConfigDir
-                                ) {
-                                    return;
-                                }
-                            }
-                            Err(e) => {
-                                if !send_worker_message(
-                                    &to_caller_tx,
-                                    ConfigWorkerMessage::Error(e)
-                                ) {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    Ok(ConfigCallerMessage::WriteConfig(s)) => {
-                        match write_config(s) {
-                            Ok(_) => {
-                                if !send_worker_message(
-                                    &to_caller_tx,
-                                    ConfigWorkerMessage::DoneWritingConfig
-                                ) {
-                                    return;
-                                }
-                            }
-                            Err(e) => {
-                                if !send_worker_message(
-                                    &to_caller_tx,
-                                    ConfigWorkerMessage::Error(e)
-                                ) {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    Ok(ConfigCallerMessage::ReadConfig) => {
-                        match read_config() {
-                            Ok(s) => {
-                                if !send_worker_message(
-                                    &to_caller_tx,
-                                    ConfigWorkerMessage::DoneReadingConfig(s)
-                                ) {
-                                    return;
-                                }
-                            }
-                            Err(e) => {
-                                if !send_worker_message(
-                                    &to_caller_tx,
-                                    ConfigWorkerMessage::Error(e)
-                                ) {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    Err(_recv_err) => {
-                        return;
-                    }
-                }
-            }
-        });
-
-        ConfigWorker { rx: from_worker_rx, tx: to_worker_tx }
     }
 }
 
@@ -245,11 +289,7 @@ fn read_config() -> Result<String> {
             let content = fs::read_to_string(&abs_path)?;
             
             return Ok(content)
-        
-        } else {
-            return Err(anyhow!("Configration file: {abs_path:?} is not a regular file"));
-        }
-    
+        } 
     }
 
     Err(anyhow!("$HOME directory not found"))
@@ -279,8 +319,12 @@ fn write_config(content: String) -> Result<()> {
         debug!("writing content to: {abs_path:?}");
         // fs::write() creates the file if it does not already exist
         fs::write(abs_path, &content)?;
-    }
 
-    Ok(())
+        Ok(())
+    } else {
+        Err(
+            anyhow!("$HOME directory not found")
+        )
+    }
 }
 

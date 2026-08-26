@@ -1,5 +1,5 @@
 use crossterm::style::style;
-use process_table::{Column, ProcessTable, MemoryUnitOptions};
+use process_table::{ColumnOptions, ProcessTable, MemoryUnitOptions};
 use crate::components::process_table::{ProcessTableViews, ViewsOrientation, ProcessTableViewFocus};
 
 use ratatui::{
@@ -125,17 +125,17 @@ impl StatefulWidget for ProcessTableWidget<'_> {
 
 
                     for (column_index, column_config) in view.table_state().columns().columns().enumerate() {
-                        let cell = match column_config.column() {
-                            Column::Pid => {
+                        let cell = match column_config {
+                            ColumnOptions::Pid => {
                                 Cell::from(format!("{:?}", process_table_row.process().pid().as_u32()))
                             }
-                            Column::CpuTotal => {
+                            ColumnOptions::CpuTotal => {
                                 Cell::from(format!("{:?}", process_table_row.process().cpu_total().as_f32()))
                             }
-                            Column::CpuAverage => {
+                            ColumnOptions::CpuAverage => {
                                 Cell::from(format!("{:?}", process_table_row.process().cpu_average().as_f32()))
                             }
-                            Column::Memory(unit) => {
+                            ColumnOptions::Memory(unit) => {
                                 match unit {
                                     MemoryUnitOptions::B => {
                                         Cell::from(format!("{:?}", process_table_row.process().mem().as_bytes()))
@@ -151,13 +151,13 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                                     }
                                 }
                             }
-                            Column::Name => {
+                            ColumnOptions::Name => {
                                 Cell::from(process_table_row.process().name().as_str())
                             }
-                            Column::MeanCpuUsageOverLastMinute => {
+                            ColumnOptions::MeanCpuUsageOverLastMinute => {
                                 Cell::from(format!("{:?}", process_table_row.statistics().mean_cpu_usage_last_minute()))
                             }
-                            Column::MeanCpuUsageAsTotalOverLastMinute => {
+                            ColumnOptions::MeanCpuUsageAsTotalOverLastMinute => {
                                 Cell::from(format!("{:?}", process_table_row.statistics().mean_cpu_usage_as_total_last_minute()))
                             }
                         };
@@ -212,7 +212,7 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                         Style::default()
                     };
                     
-                    Cell::new(col.column().as_str()).style(style)
+                    Cell::new(col.as_str()).style(style)
                 }).collect::<Row>().style(Style::default().fg(Color::Black).bg(Color::LightBlue));
 
             // This is kind of a hack

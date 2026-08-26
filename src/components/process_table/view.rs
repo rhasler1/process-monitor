@@ -1,4 +1,6 @@
-use process_table::ProcessTableState;
+use anyhow::{anyhow, Error};
+
+use process_table::{ProcessTableState, ProcessTableStateConfig};
 
 use serde::{Deserialize, Serialize};
 
@@ -30,12 +32,52 @@ impl ProcessTableViewFocus {
     }
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessTableViewConfig {
+    table_state_config: ProcessTableStateConfig,
+    focus:              ProcessTableViewFocus
+}
+
+impl From<&ProcessTableView> for ProcessTableViewConfig {
+    fn from(view: &ProcessTableView) -> Self {
+        Self {
+            table_state_config: 
+                ProcessTableStateConfig::from(&view.table_state),
+            focus: view.focus.clone()
+        }
+
+    }
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct ProcessTableView {
     table_state:    ProcessTableState,
     /// Table | Filter
     filter_err_msg: Option<String>,
     focus:          ProcessTableViewFocus,
+}
+
+impl TryFrom<&ProcessTableViewConfig> for ProcessTableView {
+    type Error = anyhow::Error;
+    
+    fn try_from(
+        config: &ProcessTableViewConfig
+    ) -> Result<Self, Self::Error> {
+        let table_state_config = config.table_state_config.clone();
+        // Validation
+        let table_state = ProcessTableState::try_from(&table_state_config)?;
+
+        let focus = config.focus.clone();
+
+        // Safe default
+        let filter_err_msg = None;
+
+        Ok(Self {
+            table_state,
+            filter_err_msg,
+            focus
+        })
+    }
 }
 
 impl ProcessTableView {
@@ -93,6 +135,28 @@ impl ViewsOrientation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessTableViewsConfig {
+    views:              Vec<ProcessTableViewConfig>,
+    views_orientation:  ViewsOrientation
+}
+
+impl From<&ProcessTableViews> for ProcessTableViewsConfig {
+    fn from(process_table_views: &ProcessTableViews) -> Self {
+        let views = process_table_views
+            .views
+            .iter()
+            .map(|view| ProcessTableViewConfig::from(view))
+            .collect::<Vec<_>>();
+
+        Self {
+            views,
+            views_orientation:
+                process_table_views.views_orientation.clone()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ProcessTableViews {
     /// Collection of views; can never be empty
     views:              Vec<ProcessTableView>,
@@ -104,6 +168,38 @@ pub struct ProcessTableViews {
     views_orientation:  ViewsOrientation,
     /// Maximum number of ProcessTableView in views
     capacity: usize
+}
+
+impl TryFrom<&ProcessTableViewsConfig> for ProcessTableViews {
+    type Error = anyhow::Error;
+
+    fn try_from(config: &ProcessTableViewsConfig) -> Result<Self, Self::Error> {
+        let views = config
+            .views
+            .iter()
+            .map(ProcessTableView::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if views.is_empty() {
+            return Err(anyhow!("views cannot be empty"))
+        }
+
+        // Safe default
+        let views_selection = 0;
+
+        let views_orientation = config.views_orientation.clone();
+
+        // Safe default
+        let capacity = Self::DEFAULT_CAPACITY;
+
+        Ok(Self {
+            views,
+            views_selection,
+            views_orientation,
+            capacity
+        })
+
+    }
 }
 
 impl Default for ProcessTableViews {

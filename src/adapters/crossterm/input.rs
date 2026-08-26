@@ -23,6 +23,7 @@ pub enum Key {
     Alth,
     Altv,
     Ctrlc,
+    Ctrls,
     AltLeft,
     AltRight,
     Unknown
@@ -32,6 +33,7 @@ impl From<KeyEvent> for Key {
     fn from(event: KeyEvent) -> Self {
         match (event.code, event.modifiers) {
             (KeyCode::Char('c'),    KeyModifiers::CONTROL)  => Key::Ctrlc,
+            (KeyCode::Char('s'),    KeyModifiers::CONTROL)  => Key::Ctrls,
             (KeyCode::Char('s'),    KeyModifiers::ALT)      => Key::Alts,
             (KeyCode::Char('d'),    KeyModifiers::ALT)      => Key::Altd,
             (KeyCode::Char('h'),    KeyModifiers::ALT)      => Key::Alth,

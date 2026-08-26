@@ -1,17 +1,24 @@
 mod view;
 use std::time::Duration;
 
-pub use view::{ProcessTableViewFocus, ProcessTableView, ProcessTableViews, ViewsOrientation};
+pub use view::{
+    ProcessTableViewFocus,
+    ProcessTableView,
+    ProcessTableViews,
+    ViewsOrientation,
+    ProcessTableViewsConfig
+};
 
 use process_table::{
-    ColumnConfig, Column, Process, ProcessTable, RowSort, MemoryUnitOptions
+    ColumnOptions, ColumnsConfig, Columns, Process, ProcessTable, RowSort, MemoryUnitOptions
 };
 
 use crate::components::Event;
 use crate::adapters::crossterm::input::Key;
+use crate::config::AppConfig;
 use crate::domain::process::model::ProcessSnapShot;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 pub struct ProcessTableComponent {
     table: ProcessTable,
@@ -32,11 +39,20 @@ impl From<&ProcessSnapShot> for Vec<Process> {
 }
 
 impl ProcessTableComponent {
-    pub fn new(snapshot: &ProcessSnapShot) -> Result<Self> {
-        // TODO: time_interval should be provided by config...
-        let table = ProcessTable::new(snapshot.into(), Duration::from_secs(2))?;
+    pub fn new_with_config(
+        snapshot: &ProcessSnapShot,
+        config:   &AppConfig,
+    ) -> Result<Self> {
+        let table = ProcessTable::new(
+            snapshot.into(),
+            config.refresh_rate_config().interval()
+        )?;
 
-        let mut views = ProcessTableViews::default();
+        let mut views = if let Some(views_config) = config.tables_views_config() {
+            ProcessTableViews::try_from(views_config)?
+        } else {
+            ProcessTableViews::default()
+        };
 
         // Update row selection
         let visible_rows_upper_bound = table.count_visible_rows(
@@ -52,7 +68,7 @@ impl ProcessTableComponent {
 
         Ok(Self {
             table,
-            views: ProcessTableViews::default()
+            views
         })
     }
 
@@ -162,9 +178,7 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_columns()
                     .insert_column(
-                        ColumnConfig::new(
-                            Column::Pid,
-                        )
+                        ColumnOptions::Pid,
                     );
             }
 
@@ -174,9 +188,7 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_columns()
                     .insert_column(
-                        ColumnConfig::new(
-                            Column::CpuAverage,
-                        )
+                        ColumnOptions::CpuAverage,
                     );
             }
 
@@ -186,9 +198,7 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_columns()
                     .insert_column(
-                        ColumnConfig::new(
-                            Column::MeanCpuUsageOverLastMinute,
-                        )
+                        ColumnOptions::MeanCpuUsageOverLastMinute,
                     );
             }
 
@@ -198,9 +208,7 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_columns()
                     .insert_column(
-                        ColumnConfig::new(
-                            Column::CpuTotal,
-                        )
+                        ColumnOptions::CpuTotal,
                     );
             }
 
@@ -211,9 +219,7 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_columns()
                     .insert_column(
-                        ColumnConfig::new(
-                            Column::MeanCpuUsageAsTotalOverLastMinute,
-                        )
+                        ColumnOptions::MeanCpuUsageAsTotalOverLastMinute,
                     );
             }
 
@@ -223,9 +229,7 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_columns()
                     .insert_column(
-                        ColumnConfig::new(
-                            Column::Memory(MemoryUnitOptions::B),
-                        )
+                        ColumnOptions::Memory(MemoryUnitOptions::B),
                     );
             }
 
@@ -235,9 +239,7 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_columns()
                     .insert_column(
-                        ColumnConfig::new(
-                            Column::Name,
-                        )
+                        ColumnOptions::Name,
                     );
             }
 

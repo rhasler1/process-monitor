@@ -1,34 +1,116 @@
 // Internal project imports
 use process_monitor::app::{App, AppEventState};
-use process_monitor::config::app_config::Config;
+use process_monitor::config::AppConfig;
 use process_monitor::events::app_event::{AppEvent, AppEvents};
 use process_monitor::adapters::crossterm::input::Key;
 use process_monitor::services::config_worker::{ConfigCallerMessage, ConfigWorker, ConfigWorkerMessage};
 use process_monitor::services::sysinfo_worker::{SysinfoWorker, CallerMessage, WorkerMessage};
 use process_monitor::terminal::{restore_terminal, setup_terminal};
-use serde::de::Error;
+
 // std library import
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::TrySendError::{Disconnected, Full};
 
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
+
 // log
 use log::{debug, info, warn, error};
 
-
-
-// 1. Setup logger
-// 2. Setup config worker
-// 3. Setup sysinfo worker
-// 4. Setup App
-// 5. Setup AppEvents
-// 6. Setup terminal
-// 7. Enter main ui event loop
-//
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     info!("Logger initialized");
+
+    // Setup config worker thread::START
+    let config_worker = ConfigWorker::default();
     
+    // Build config directory (if it does not already exist)
+    // The channel is empty at this point, the blocking call
+    // should not block.
+    config_worker
+        .send(ConfigCallerMessage::BuildConfigDir)
+        .map_err(|e| anyhow!(e))?;
+
+    // Wait for worker thread to finish work
+    let msg = config_worker
+        .next()
+        .map_err(|e| anyhow!(e))?;
+
+    // Check message for error
+    if matches!(msg, ConfigWorkerMessage::Error(_e)) {
+        return Err(anyhow!("Config worker message (fix this error reporting)")).into();
+    }
+    // Setup config worker thread::END
+
+    // Setup AppConfig::BEGIN
+    // Send read config message
+    config_worker
+        .send(ConfigCallerMessage::ReadConfig)
+        .map_err(|e| anyhow!(e))?;
+
+    let msg = config_worker
+        .next()
+        .map_err(|e| anyhow!(e))?;
+
+    let serialized_config = match msg {
+        ConfigWorkerMessage::DoneReadingConfig(s) => {
+            s
+        }
+        _ => return Err(anyhow!("Unexpected message"))
+    };
+
+    let app_config: AppConfig = toml::from_str(
+        &serialized_config
+    ).unwrap_or_default();
+    // Setup AppConfig::END
+
+    // Setup App::BEGIN
+    // Transfer ownership of config; events should call app.config() to get refresh rate
+    let mut app = match App::new_with_config(app_config) {
+        Ok(app) => app,
+        Err(e) => {
+            error!("Error upon app creation: {e}");
+            return Err(anyhow!(e));
+        }
+    };
+    // Setup App::END
+
+    // Setup system info worker::BEGIN
+    let sysinfo_worker = SysinfoWorker::default();
+
+    sysinfo_worker
+        .send(CallerMessage::BuildProcessSnapShot)
+        .map_err(|e| anyhow!(e))?;
+
+    let msg = sysinfo_worker
+        .next()
+        .map_err(|e| anyhow!(e))?;
+
+    let process_snapshot = match msg {
+        WorkerMessage::Done(snapshot) => {
+            snapshot
+        }
+        _ => {
+            return Err(
+                anyhow!("Unexpected message from sysinfo worker")
+            )
+        }
+    };
+
+    // Update app with snapshot
+    match app.model_update(process_snapshot) {
+        Ok(_) => {}
+        Err(e) => {
+            restore_terminal()?;
+            return Err(anyhow!("{e}"))
+        }
+    }
+    
+    // Create AppEvents MPSC channel
+    // TODO: AppEvents::new_with_config();
+    //       AppEvents main event loop needs to be
+    //       refactored to support this.
+    let app_events = AppEvents::default();
+
     // Terminal setup
     let mut terminal = setup_terminal()
         .inspect_err(|e| {
@@ -36,83 +118,7 @@ fn main() -> anyhow::Result<()> {
         })?;
 
     info!("Terminal setup complete");
-
-    // Config thread setup
-    let config_worker = ConfigWorker::default();
     
-    // Build config directory if it does not already exist
-    config_worker
-        .send(ConfigCallerMessage::BuildConfigDir)
-        .map_err(|e| Err(e))?;
-
-
-    let msg = config_worker
-        .next()
-        .map_err(|e| Err(e))?;
-
-    if matches!(msg, ConfigWorkerMessage::Error(e)) {
-        return Err(e);
-    }
-
-
-
-    // Wait for config worker's response
-
-    // TODO: Leaving off here
-    // - Finish implementing ConfigWorker
-
-    // Check config directory for existing config
-    //match config_worker.send(ConfigCallerMessage::ReadConfig) {
-    //    Ok(c)
-    //}
-
-    // Create config
-    let config = Config::default();
-
-    let mut app = match App::new(&config) {
-        Ok(app) => app,
-        Err(e) => {
-            error!("Error upon app creation: {e}");
-            tear_down()?;
-            std::process::exit(1);
-        }
-    };
-    
-    // Create AppEvents MPSC channel
-    let app_events = AppEvents::default();
-    // Create sysinfo worker
-    let sysinfo_worker = SysinfoWorker::default();
-    // Send build message to worker
-    debug!("`Main`: sending initial BuildProcessSnapShot message");
-    if sysinfo_worker.send(CallerMessage::BuildProcessSnapShot).is_err() {
-        // mpsc channel `caller` => `worker` disconnected; exit program
-        tear_down()?;
-        std::process::exit(1);
-    }
-    // Using blocking next to wait for first domain model to be built before entering event loop
-    match sysinfo_worker.next()? {
-        WorkerMessage::Done(process_snapshot) => {
-            debug!("`Main` received domain model from `worker`");
-            /*// TODO Remove this
-            let data_string = process_snapshot.serialize();
-            info!("\nSERIALIZED PROC DATA\n{data_string}\n\n");
-            let data_struct: ProcessSnapShot = ProcessSnapShot::deserialize(&data_string);
-            let time_stamp = data_struct.ts();
-            let count = data_struct.count();
-            let first_proc_name = data_struct.iter().find(|item| item.pid() == 1);
-            let first_proc_name = first_proc_name.unwrap().name().to_string_lossy();
-            info!("\nChecking data_struct:\nts = {time_stamp}\n count = {count}\n name = {first_proc_name}");
-            // End*/
-            app.model_update(process_snapshot);
-        }
-        WorkerMessage::DoneTerminateProcess => {
-            error!("`Main`: received DoneTerminateProcess message before main event loop, exiting program...");
-            tear_down()?;
-            info!("Terminal tear down complete");
-            info!("Exiting main");
-            std::process::exit(1);
-        }
-    }
     // Main event loop
     info!("Entering main event loop");
     loop {
@@ -120,7 +126,13 @@ fn main() -> anyhow::Result<()> {
         match sysinfo_worker.try_next() {
             Ok(WorkerMessage::Done(process_snapshot)) => {
                 debug!("`Main` received Done(process_snapshot) message");
-                app.model_update(process_snapshot);
+                match app.model_update(process_snapshot) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("{e}");
+                        break;
+                    }
+                }
             }
             Ok(WorkerMessage::DoneTerminateProcess) => {
                 debug!("`Main` received DoneTerminateProcess message");
@@ -192,29 +204,8 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    tear_down()?;
-    info!("Terminal tear down complete");
+    restore_terminal()?;
+    info!("Terminal restore complete");
     info!("End of main");
     Ok(())
 }
-
-// Terminal tear down
-fn tear_down() -> anyhow::Result<()> {
-    crossterm::terminal::disable_raw_mode()?;
-    crossterm::execute!(
-        std::io::stdout(),
-        crossterm::terminal::LeaveAlternateScreen,
-        crossterm::event::DisableMouseCapture
-        )?;
-    Ok(())
-}
-
-/*
-TODO:
-- Clean up process_table naming convention
-- Write integration tests at App level
-- Write key_config and inject into components (remove hardcoded key values from controllers)
-- Serialize & deserialize component structures so that column order and sort order can be saved across runs
-- Improve termination view
-- Rewrite main README.md
-*/
