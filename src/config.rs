@@ -24,6 +24,9 @@ impl AppConfig {
             table_views_config
         }
     }
+    pub fn update_table_views_config(&mut self, config: &ProcessTableViewsConfig) {
+        self.table_views_config = Some(config.clone());
+    }
 
     pub fn refresh_rate_config(&self) -> &RefreshRateConfig {
         &self.refresh_rate_config

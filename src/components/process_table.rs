@@ -94,6 +94,10 @@ impl ProcessTableComponent {
         Ok(())
     }
 
+    pub fn views(&self) -> &ProcessTableViews {
+        &self.views
+    }
+
     pub fn table_and_views(&mut self) -> (&ProcessTable, &mut ProcessTableViews) {
         (&self.table, &mut self.views)
     }

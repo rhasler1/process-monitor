@@ -154,11 +154,28 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         })?;
+        // TODO: The incoming mpsc channels need to be processed
         match app_events.next()? {
             AppEvent::Key(key) => {
                 match app.key_event(key)? {
                     AppEventState::TerminatePid(pid) => {
                         match sysinfo_worker.try_send(CallerMessage::TerminateProcess(pid)) {
+                            Ok(_) => { continue }
+                            Err(try_send_err) => {
+                                match try_send_err {
+                                    Full(_) => {
+                                        warn!("MPSC channel from `main` to `worker` is FULL");
+                                    }
+                                    Disconnected(_) => {
+                                        error!("MPSC channel from `main` to `worker` is DISCONNECTED");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    AppEventState::SaveConfig(serial_config) => {
+                        match config_worker.try_send(ConfigCallerMessage::WriteConfig(serial_config)) {
                             Ok(_) => { continue }
                             Err(try_send_err) => {
                                 match try_send_err {

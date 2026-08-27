@@ -7,10 +7,10 @@ use ratatui::widgets::StatefulWidget;
 use crate::adapters::crossterm::input::Key;
 use crate::config::AppConfig;
 use crate::domain::process::model::{ProcessSnapShot};
-use crate::components::process_table::{ProcessTableComponent, ProcessTableEventState};
+use crate::components::process_table::{ProcessTableComponent, ProcessTableEventState, ProcessTableViewsConfig};
 use crate::components::process_term::component::Component as ProcTermComponent;
-use crate::widgets::ProcessTableWidget;
-use crate::components::config_manager::ConfigManagerComponent;
+use crate::widgets::{ConfigMenuWidget, ProcessTableWidget};
+use crate::components::config_manager::{ConfigManagerComponent, ConfigManagerEventState};
 
 use crate::components::Event;
 
@@ -19,6 +19,7 @@ use anyhow::Result;
 pub enum AppEventState {
     Consumed,
     NotConsumed,
+    SaveConfig(String),
     TerminatePid(u32)
 }
 
@@ -101,12 +102,10 @@ impl App {
                         // Send pid to terminate component & swap focus
                     }
                     ProcessTableEventState::NotConsumed => {
-                        // TODO:    Check if focus should be switched
-                        //          to configmanager or help
-                        //
-                        //if matches!(key, Key::Ctrls) {
-                        //    self.focus = Focus::Config;
-                        //}
+                        if matches!(key, Key::Ctrls) {
+                            self.focus = Focus::Config;
+                            return Ok(AppEventState::Consumed);
+                        }
                     }
                     ProcessTableEventState::Consumed => {
                         return Ok(AppEventState::Consumed);
@@ -114,6 +113,26 @@ impl App {
                 }
             }
             Focus::Config => {
+                match self.config_manager.event(key)? {
+                    ConfigManagerEventState::SaveCurrentConfig => {
+                        let views_config = ProcessTableViewsConfig::from(self.process_table.views());
+                        
+                        self.config_manager.mut_app_config().update_table_views_config(&views_config);
+                        
+                        let serialized = self.config_manager.serialize_current_config()?;
+
+                        return Ok(AppEventState::SaveConfig(serialized));
+                    }
+                    ConfigManagerEventState::NotConsumed => {
+                        if matches!(key, Key::Esc) {
+                            self.focus = Focus::Table;
+                            return Ok(AppEventState::Consumed);
+                        }
+                    }
+                    ConfigManagerEventState::Consumed => {
+                        return Ok(AppEventState::Consumed);
+                    }
+                }
             }
         }
 
@@ -129,10 +148,22 @@ impl App {
             .split(frame.size());
 
         // Get table and views
-        let (table, views) = self.process_table.table_and_views();
+        match self.focus {
+            Focus::Table => {
+                let (table, views) = self.process_table.table_and_views();
+                
+                let widget = ProcessTableWidget::new(table);
+                
+                frame.render_stateful_widget(widget, chunks[0], views);
+            }
+            Focus::Config => {
+                let config_menu = self.config_manager.menu();
 
-        let widget = ProcessTableWidget::new(table);
-        frame.render_stateful_widget(widget, chunks[0], views);
+                let widget = ConfigMenuWidget::new(config_menu);
+
+                frame.render_widget(widget, chunks[0]);
+            }
+        }
 
         Ok(())
     }
