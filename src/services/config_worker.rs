@@ -289,6 +289,8 @@ fn read_config() -> Result<String> {
             let content = fs::read_to_string(&abs_path)?;
             
             return Ok(content)
+        } else {
+            return Ok("".to_string())
         } 
     }
 
