@@ -1,0 +1,287 @@
+use anyhow::{anyhow, Result};
+
+use process_table::{ProcessTableState, ProcessTableStateConfig};
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Default, Clone)]
+pub enum ProcessTableViewFocus {
+    Columns,
+    #[default]
+    Rows,
+    Filter
+}
+
+impl ProcessTableViewFocus {
+    pub fn set_to_columns(&mut self) {
+        *self = Self::Columns;
+    }
+
+    pub fn set_to_rows(&mut self) {
+        *self = Self::Rows;
+    }
+
+    pub fn set_to_filter(&mut self) {
+        *self = Self::Filter;
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessTableViewConfig {
+    table_state_config: ProcessTableStateConfig,
+}
+
+impl From<&ProcessTableView> for ProcessTableViewConfig {
+    fn from(view: &ProcessTableView) -> Self {
+        Self {
+            table_state_config: 
+                ProcessTableStateConfig::from(&view.table_state),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ProcessTableView {
+    table_state:    ProcessTableState,
+    /// Table | Filter
+    filter_err_msg: Option<String>,
+    focus:          ProcessTableViewFocus,
+}
+
+impl TryFrom<&ProcessTableViewConfig> for ProcessTableView {
+    type Error = anyhow::Error;
+    
+    fn try_from(
+        config: &ProcessTableViewConfig
+    ) -> Result<Self, Self::Error> {
+        let table_state_config = config.table_state_config.clone();
+        // Validation
+        let table_state = ProcessTableState::try_from(&table_state_config)?;
+
+        let focus = ProcessTableViewFocus::default();
+
+        // Safe default
+        let filter_err_msg = None;
+
+        Ok(Self {
+            table_state,
+            filter_err_msg,
+            focus
+        })
+    }
+}
+
+impl ProcessTableView {
+    pub fn new_from_existing(&self) -> Self {
+        Self {
+            table_state:    self.table_state.clone(),
+            filter_err_msg: self.filter_err_msg.clone(),
+            focus:          self.focus.clone()
+        }
+    }
+
+    pub fn table_state(&self) -> &ProcessTableState {
+        &self.table_state
+    }
+
+    pub fn mut_table_state(&mut self) -> &mut ProcessTableState {
+        &mut self.table_state
+    }
+
+    pub fn view_focus(&self) -> &ProcessTableViewFocus {
+        &self.focus
+    }
+
+    pub fn mut_view_focus(&mut self) -> &mut ProcessTableViewFocus {
+        &mut self.focus
+    }
+
+    pub fn set_filter_err_msg(&mut self, s: &str) {
+        self.filter_err_msg = Some(s.to_string());
+    }
+
+    pub fn set_filter_err_msg_to_none(&mut self) {
+        self.filter_err_msg = None;
+    }
+
+    pub fn filter_err_msg(&self) -> Option<&String> {
+        self.filter_err_msg.as_ref()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ViewsOrientation {
+    SplitHorizontal,
+    SplitVertical
+}
+
+impl ViewsOrientation {
+    pub fn set_to_split_horizontal(&mut self) {
+        *self = Self::SplitHorizontal;
+    }
+
+    pub fn set_to_split_vertical(&mut self) {
+        *self = Self::SplitVertical;
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessTableViewsConfig {
+    views:              Vec<ProcessTableViewConfig>,
+    views_orientation:  ViewsOrientation
+}
+
+impl From<&ProcessTableViews> for ProcessTableViewsConfig {
+    fn from(process_table_views: &ProcessTableViews) -> Self {
+        let views = process_table_views
+            .views
+            .iter()
+            .map(ProcessTableViewConfig::from)
+            .collect::<Vec<_>>();
+
+        Self {
+            views,
+            views_orientation:
+                process_table_views.views_orientation.clone()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProcessTableViews {
+    /// Collection of views; can never be empty
+    views:              Vec<ProcessTableView>,
+    /// Index into views; methods guarantee
+    /// `views_selection` is always valid
+    views_selection:    usize,
+    /// Description of how views should
+    /// be oriented on the screen
+    views_orientation:  ViewsOrientation,
+    /// Maximum number of ProcessTableView in views
+    capacity: usize
+}
+
+impl TryFrom<&ProcessTableViewsConfig> for ProcessTableViews {
+    type Error = anyhow::Error;
+
+    fn try_from(config: &ProcessTableViewsConfig) -> Result<Self, Self::Error> {
+        let views = config
+            .views
+            .iter()
+            .map(ProcessTableView::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if views.is_empty() {
+            return Err(anyhow!("views cannot be empty"))
+        }
+
+        // Safe default
+        let views_selection = 0;
+
+        let views_orientation = config.views_orientation.clone();
+
+        // Safe default
+        let capacity = Self::DEFAULT_CAPACITY;
+
+        Ok(Self {
+            views,
+            views_selection,
+            views_orientation,
+            capacity
+        })
+
+    }
+}
+
+impl Default for ProcessTableViews {
+    fn default() -> Self {
+        Self {
+            views:              vec![ProcessTableView::default()],
+            views_selection:    0,
+            views_orientation:  ViewsOrientation::SplitVertical,
+            capacity:           Self::DEFAULT_CAPACITY
+        }
+    }
+}
+
+impl ProcessTableViews {
+    const DEFAULT_CAPACITY: usize = 2;
+
+    pub fn create_new_view_from_active(&mut self) {
+        if self.views.len() == self.capacity {
+            return
+        }
+
+        self.views.push(
+            ProcessTableView::new_from_existing(self.active_view())
+        );
+    }
+
+    pub fn remove_active_view(&mut self) {
+        if self.views.len() == 1 {
+            // Invariant: At all times views must be non-empty.
+            return
+        }
+
+        self.views.remove(self.views_selection);
+
+        self.views_selection = if self.views_selection == 0 {
+            0
+        } else {
+            self.views_selection - 1
+        };
+    }
+
+    // Len can never be 1.
+    pub fn inc_selection(&mut self) {
+        let len = self.views.len();
+        let sel = self.views_selection;
+
+        self.views_selection = if sel + 1 < len { sel + 1 }
+        else { 0 };
+    }
+
+    // Len can never be 1
+    pub fn dec_selection(&mut self) {
+        let len = self.views.len();
+        let sel = self.views_selection;
+
+        self.views_selection = if sel > 0 { sel - 1 }
+        else { len - 1 };
+    }
+
+    // Invariant: selection is always valid, unwrap is safe
+    pub fn active_view(&self) -> &ProcessTableView {
+        self.views.get(self.views_selection).unwrap()
+    }
+
+    pub fn mut_active_view(&mut self) -> &mut ProcessTableView {
+        self.views.get_mut(self.views_selection).unwrap()
+    }
+    
+    // Iter
+    pub fn views(&self) -> impl Iterator<Item = &ProcessTableView> {
+        self.views.iter()
+    }
+
+    pub fn mut_views(&mut self) -> impl Iterator<Item = &mut ProcessTableView> {
+        self.views.iter_mut()
+    }
+
+    pub fn views_selection(&self) -> usize {
+        self.views_selection
+    }
+
+    pub fn views_orientation(&self) -> &ViewsOrientation {
+        &self.views_orientation
+    }
+
+    pub fn mut_views_orientation(&mut self) -> &mut ViewsOrientation {
+        &mut self.views_orientation
+    }
+
+    pub fn count_views(&self) -> usize {
+        self.views.len()
+    }
+}
+

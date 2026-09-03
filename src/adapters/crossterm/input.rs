@@ -1,70 +1,79 @@
 // Crossterm event (adapt)=> application input
 use crossterm::event::{
-    KeyEvent,
-    KeyCode,
-    MouseEvent,
-    MouseEventKind,
-    MouseButton
+    KeyCode, KeyEvent, KeyModifiers, ModifierKeyCode
 };
 
-#[derive(PartialEq, Eq)]
-pub enum KeyInput {
+#[derive(Clone,Copy,PartialEq,Eq)]
+pub enum Key {
     Enter,
     Esc,
     Char(char),
     Backspace,
+    Delete,
     Up,
     Down,
     Left,
     Right,
     Tab,
+    PageUp,
+    PageDown,
+    
+    /*Alto,
+    Alts,
+    Altd,
+    Alth,
+    Altv,
+    AltLeft,
+    AltRight,*/
+
+    Ctrlc,
+    Ctrlx,
+    Ctrls,
+    Ctrlh,
+    Ctrlv,
+    Ctrld,
+    CtrlLeft,
+    CtrlRight,
+
     Unknown
 }
 
-impl From<KeyEvent> for KeyInput {
+impl From<KeyEvent> for Key {
     fn from(event: KeyEvent) -> Self {
-        match event.code {
-            KeyCode::Enter      => KeyInput::Enter,
-            KeyCode::Esc        => KeyInput::Esc,
-            KeyCode::Char(char) => KeyInput::Char(char),
-            KeyCode::Backspace  => KeyInput::Backspace,
-            KeyCode::Up         => KeyInput::Up,
-            KeyCode::Down       => KeyInput::Down,
-            KeyCode::Left       => KeyInput::Left,
-            KeyCode::Right      => KeyInput::Right,
-            KeyCode::Tab        => KeyInput::Tab,
-            _                   => KeyInput::Unknown
+        match (event.code, event.modifiers) {
+            (KeyCode::Char('c'),    KeyModifiers::CONTROL)  => Key::Ctrlc,
+            (KeyCode::Char('x'),    KeyModifiers::CONTROL)  => Key::Ctrlx,
+            (KeyCode::Char('s'),    KeyModifiers::CONTROL)  => Key::Ctrls,
+
+            (KeyCode::Char('h'),    KeyModifiers::CONTROL)  => Key::Ctrlh,
+            (KeyCode::Char('v'),    KeyModifiers::CONTROL)  => Key::Ctrlv,
+            (KeyCode::Char('d'),    KeyModifiers::CONTROL)  => Key::Ctrld,
+            (KeyCode::Left,         KeyModifiers::CONTROL)  => Key::CtrlLeft,
+            (KeyCode::Right,        KeyModifiers::CONTROL)  => Key::CtrlRight,
+            /*(KeyCode::Char('s'),    KeyModifiers::ALT)      => Key::Alts,
+            (KeyCode::Char('d'),    KeyModifiers::ALT)      => Key::Altd,
+            (KeyCode::Char('h'),    KeyModifiers::ALT)      => Key::Alth,
+            (KeyCode::Char('v'),    KeyModifiers::ALT)      => Key::Altv,
+            (KeyCode::Char('o'),    KeyModifiers::ALT)      => Key::Alto,
+            (KeyCode::Left,         KeyModifiers::ALT)      => Key::AltLeft,
+            (KeyCode::Right,        KeyModifiers::ALT)      => Key::AltRight,*/
+
+
+            (KeyCode::Enter,        _)  => Key::Enter,
+            (KeyCode::Esc,          _)  => Key::Esc,
+            (KeyCode::Char(char),   _)  => Key::Char(char),
+            (KeyCode::Backspace,    _)  => Key::Backspace,
+            (KeyCode::Delete,       _)  => Key::Delete,
+            (KeyCode::Up,           _)  => Key::Up,
+            (KeyCode::Down,         _)  => Key::Down,
+            (KeyCode::Left,         _)  => Key::Left,
+            (KeyCode::Right,        _)  => Key::Right,
+            (KeyCode::Tab,          _)  => Key::Tab,
+            (KeyCode::PageUp,       _)  => Key::PageUp,
+            (KeyCode::PageDown,     _)  => Key::PageDown,
+
+            _                           => Key::Unknown
         }
     }
 }
 
-#[derive(PartialEq, Eq)]
-pub enum MouseInputKind {
-    LeftClick,
-    ScrollUp,
-    ScrollDown,
-    Unknown
-}
-
-pub struct MouseInput {
-    pub kind: MouseInputKind,
-    pub column: u16,
-    pub row: u16
-}
-
-impl From<MouseEvent> for MouseInput {
-    fn from(event: MouseEvent) -> Self {
-        let kind = match event.kind {
-            MouseEventKind::Down(MouseButton::Left) => MouseInputKind::LeftClick,
-            MouseEventKind::ScrollUp   => MouseInputKind::ScrollUp,
-            MouseEventKind::ScrollDown => MouseInputKind::ScrollDown,
-            _ => MouseInputKind::Unknown
-        };
-
-        Self {
-            kind,
-            column: event.column,
-            row: event.row
-        }
-    }
-}
