@@ -35,7 +35,7 @@ mod table_state;
 pub use table_state::{ProcessTableState, ProcessTableStateConfig};
 
 mod buffer;
-pub use buffer::{AsciiString, AsciiStringConfig};
+pub use buffer::AsciiString;
 
 mod process_table_row;
 pub use process_table_row::ProcessTableRow;

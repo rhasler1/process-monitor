@@ -1,25 +1,8 @@
-use super::{BufError, Error};
+use super::BufError;
 
 use std::str::Chars;
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AsciiStringConfig {
-    buffer: String
-}
-
-impl From<&AsciiString> for AsciiStringConfig {
-    fn from(s: &AsciiString) -> Self {
-        Self {
-            buffer: s.buffer.clone()
-        }
-    }
-}
-
 /// Guarantees internal buffer is ascii.
-///
-/// Couples persistence with runtime architecture.
 #[derive(Debug, Clone)]
 pub struct AsciiString {
     /// Internal buffer
@@ -28,34 +11,6 @@ pub struct AsciiString {
     cursor: usize,
     /// Buffer capacity
     capacity: usize
-}
-
-impl TryFrom<&AsciiStringConfig> for AsciiString {
-    type Error = Error;
-
-    fn try_from(config: &AsciiStringConfig) -> Result<Self, Error> {
-        let buffer = config.buffer.clone();
-        // Safe default
-        let cursor = 0;
-        // Safe default
-        let capacity = Self::DEFAULT_MAX_CAPACITY;
-
-        // Invariant 1: Buffer must be ascii
-        if !buffer.is_ascii() {
-            return Err(BufError::NonAsciiInsertStr(buffer).into())
-        }
-
-        // Invariant 2: Buffer len cannot surpass capacity.
-        if buffer.len() > capacity {
-            return Err(BufError::BadCapacity(capacity).into())
-        }
-
-        Ok(Self {
-            buffer,
-            cursor,
-            capacity
-        })
-    }
 }
 
 impl Default for AsciiString {

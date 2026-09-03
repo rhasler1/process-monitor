@@ -58,7 +58,7 @@ impl ColumnOptions{
 }
 
 /// Configuration structure that decouples
-/// persistence from runtime architecture.
+/// persistence from runtime state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColumnsConfig {
     columns: Vec<ColumnOptions>
@@ -74,8 +74,6 @@ impl From<&Columns> for ColumnsConfig {
 
 /// Manages selection, insertion, and
 /// deletion into a vector of columns.
-///
-/// Couples persistent and runtime architecture.
 #[derive(Debug, Clone)]
 pub struct Columns {
     columns:    Vec<ColumnOptions>,

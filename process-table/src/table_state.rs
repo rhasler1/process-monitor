@@ -1,4 +1,4 @@
-use super::{AsciiString, AsciiStringConfig, AST, Parser, Lexer, VisualRowSelection,
+use super::{AsciiString, AST, Parser, Lexer, VisualRowSelection,
     VisualRowScroll, Columns, ColumnsConfig, RowSort, Error};
 
 use serde::{Serialize, Deserialize};
@@ -6,7 +6,6 @@ use serde::{Serialize, Deserialize};
 /// Decouples persistence from runtime architecture.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessTableStateConfig {
-    filter_string:  AsciiStringConfig,
     columns:        ColumnsConfig,
     row_sort:       RowSort
 }
@@ -14,7 +13,6 @@ pub struct ProcessTableStateConfig {
 impl From<&ProcessTableState> for ProcessTableStateConfig {
     fn from(table_state: &ProcessTableState) -> Self {
         Self {
-            filter_string:  AsciiStringConfig::from(&table_state.filter_string),
             columns:        ColumnsConfig::from(&table_state.columns),
             row_sort:       table_state.row_sort.clone()
         }
@@ -24,8 +22,8 @@ impl From<&ProcessTableState> for ProcessTableStateConfig {
 #[derive(Debug, Default, Clone)]
 pub struct ProcessTableState {
     /// AsciiString manages it's own cursor
-    /// 
-    /// Persistent state
+    ///
+    /// Runtime state
     filter_string:  AsciiString,
     /// AST that can be derived from AsciiString's buffer
     ///
@@ -53,10 +51,6 @@ impl TryFrom<&ProcessTableStateConfig> for ProcessTableState {
     type Error = Error;
 
     fn try_from(config: &ProcessTableStateConfig) -> Result<Self, Error> {
-        let filter_string_config = config.filter_string.clone();
-        // Validation
-        let filter_string = AsciiString::try_from(&filter_string_config)?;
-
         let columns_config = config.columns.clone();
         // Validation
         let columns = Columns::try_from(&columns_config)?;
@@ -66,7 +60,7 @@ impl TryFrom<&ProcessTableStateConfig> for ProcessTableState {
         let row_sort = config.row_sort.clone();
 
         Ok(Self {
-            filter_string,
+            filter_string:  AsciiString::default(),
             filter:         None,
             columns,
             row_selection:  VisualRowSelection::default(),
