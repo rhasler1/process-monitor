@@ -102,7 +102,7 @@ impl App {
                         // Send pid to terminate component & swap focus
                     }
                     ProcessTableEventState::NotConsumed => {
-                        if matches!(key, Key::Ctrls) {
+                        if matches!(key, Key::Ctrlx) {
                             self.focus = Focus::Config;
                             return Ok(AppEventState::Consumed);
                         }

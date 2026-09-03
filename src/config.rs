@@ -1,5 +1,4 @@
 pub mod refresh_rate_config;
-use std::cell::Ref;
 
 pub use refresh_rate_config::RefreshRateConfig;
 pub mod theme_config;

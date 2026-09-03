@@ -1,16 +1,10 @@
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Result};
 
 use process_table::{ProcessTableState, ProcessTableStateConfig};
 
 use serde::{Deserialize, Serialize};
 
-// TODO: 
-// 1. Write validate_deserialize()
-// 2. Write config component:
-//      - That can: change current configuration (e.g., refresh rate, theme)
-//
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone)]
 pub enum ProcessTableViewFocus {
     Columns,
     #[default]
@@ -35,7 +29,6 @@ impl ProcessTableViewFocus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessTableViewConfig {
     table_state_config: ProcessTableStateConfig,
-    focus:              ProcessTableViewFocus
 }
 
 impl From<&ProcessTableView> for ProcessTableViewConfig {
@@ -43,9 +36,7 @@ impl From<&ProcessTableView> for ProcessTableViewConfig {
         Self {
             table_state_config: 
                 ProcessTableStateConfig::from(&view.table_state),
-            focus: view.focus.clone()
         }
-
     }
 }
 
@@ -67,7 +58,7 @@ impl TryFrom<&ProcessTableViewConfig> for ProcessTableView {
         // Validation
         let table_state = ProcessTableState::try_from(&table_state_config)?;
 
-        let focus = config.focus.clone();
+        let focus = ProcessTableViewFocus::default();
 
         // Safe default
         let filter_err_msg = None;
@@ -145,7 +136,7 @@ impl From<&ProcessTableViews> for ProcessTableViewsConfig {
         let views = process_table_views
             .views
             .iter()
-            .map(|view| ProcessTableViewConfig::from(view))
+            .map(ProcessTableViewConfig::from)
             .collect::<Vec<_>>();
 
         Self {

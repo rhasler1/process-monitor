@@ -269,10 +269,10 @@ fn build_proj_dir() -> Result<()> {
 ///
 /// # Returns
 /// - `Ok(Some(content))` when the configuration file exists
-///    and is a regular file.
+///   and is a regular file.
 /// - `Ok(None)` when the
-///    project configuration file does not exist or is not
-///    a regular file.
+///   project configuration file does not exist or is not
+///   a regular file.
 ///
 /// # Errors
 /// Returns an error if the configuration file exists but cannot

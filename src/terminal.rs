@@ -1,11 +1,18 @@
 use std::io::{stdout, Stdout};
 use anyhow::Result;
 use ratatui::{backend::CrosstermBackend, Terminal};
-use crossterm::{execute,
+use crossterm::{
+    event::{
+        DisableMouseCapture,
+        EnableMouseCapture,
+        KeyboardEnhancementFlags,
+        PushKeyboardEnhancementFlags,
+        PopKeyboardEnhancementFlags
+    },
+    execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen,
         disable_raw_mode, enable_raw_mode
-    },
-    event::{DisableMouseCapture, EnableMouseCapture}
+    }
 };
 
 
@@ -22,7 +29,10 @@ pub fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
     if let Err(e) = execute!(
         stdout(),
         EnterAlternateScreen,
-        EnableMouseCapture
+        EnableMouseCapture,
+        PushKeyboardEnhancementFlags(
+            KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+        )
     ) {
         let _ = disable_raw_mode();
         return Err(e.into())
@@ -45,7 +55,8 @@ pub fn restore_terminal() -> Result<()> {
     execute!(
         stdout(),
         LeaveAlternateScreen,
-        DisableMouseCapture
+        DisableMouseCapture,
+        PopKeyboardEnhancementFlags
     )?;
     
     Ok(())
