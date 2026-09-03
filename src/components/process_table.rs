@@ -1,3 +1,5 @@
+use log::debug;
+
 mod view;
 use std::time::Duration;
 
@@ -118,34 +120,35 @@ impl Event for ProcessTableComponent {
         match (key, focus) {
             /* Events that operate on views */
             
-            (Key::Alts, _) => {
+            (Key::Ctrls, _) => {
+                debug!("Got Alts");
                 self.views
                     .create_new_view_from_active();
             }
 
-            (Key::Altd, _) => {
+            (Key::Ctrld, _) => {
                 self.views
                     .remove_active_view();
             }
 
-            (Key::Alth, _) => {
+            (Key::Ctrlh, _) => {
                 self.views
                     .mut_views_orientation()
                     .set_to_split_horizontal();
             }
 
-            (Key::Altv, _) => {
+            (Key::Ctrlv, _) => {
                 self.views
                     .mut_views_orientation()
                     .set_to_split_vertical();
             }
 
-            (Key::AltLeft, _) => {
+            (Key::CtrlLeft, _) => {
                 self.views
                     .dec_selection();
             }
 
-            (Key::AltRight, _) => {
+            (Key::CtrlRight, _) => {
                 self.views
                     .inc_selection();
             }
@@ -399,20 +402,27 @@ impl Event for ProcessTableComponent {
             /* Events that operate on filter */
 
             (Key::Char(c), ProcessTableViewFocus::Filter) => {
+                debug!("Character {c}");
                 // Update filer_string & ast
                 match self.views
                     .mut_active_view()
                     .mut_table_state()
                     .mut_filter_string()
                     .insert_ascii_ch(c) {
-                        Err(e) => self.views
-                            .mut_active_view()
-                            .set_filter_err_msg(&e.to_string()),
-                        
+                        Err(e) => {
+                            self.views
+                                .mut_active_view()
+                                .set_filter_err_msg(&e.to_string());
+                        }
                         Ok(_) => self.views
                             .mut_active_view()
                             .set_filter_err_msg_to_none(),
                     }
+
+                let fs = self.views().active_view().table_state().filter_string().as_str();
+                let sz = fs.len();
+                debug!("filter string: {fs}");
+                debug!("filter string size: {sz}");
 
                 match self.views
                     .mut_active_view()
@@ -440,7 +450,7 @@ impl Event for ProcessTableComponent {
                     .mut_table_state()
                     .mut_row_selection()
                     .update_selection(visible_rows_upper_bound);
-            }
+                }
 
             // Remove char from filter
             (Key::Backspace, ProcessTableViewFocus::Filter) => {

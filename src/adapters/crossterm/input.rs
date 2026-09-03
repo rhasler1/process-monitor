@@ -17,15 +17,24 @@ pub enum Key {
     Tab,
     PageUp,
     PageDown,
-    Alto,
+    
+    /*Alto,
     Alts,
     Altd,
     Alth,
     Altv,
-    Ctrlc,
-    Ctrls,
     AltLeft,
-    AltRight,
+    AltRight,*/
+
+    Ctrlc,
+    Ctrlx,
+    Ctrls,
+    Ctrlh,
+    Ctrlv,
+    Ctrld,
+    CtrlLeft,
+    CtrlRight,
+
     Unknown
 }
 
@@ -33,14 +42,21 @@ impl From<KeyEvent> for Key {
     fn from(event: KeyEvent) -> Self {
         match (event.code, event.modifiers) {
             (KeyCode::Char('c'),    KeyModifiers::CONTROL)  => Key::Ctrlc,
+            (KeyCode::Char('x'),    KeyModifiers::CONTROL)  => Key::Ctrlx,
             (KeyCode::Char('s'),    KeyModifiers::CONTROL)  => Key::Ctrls,
-            (KeyCode::Char('s'),    KeyModifiers::ALT)      => Key::Alts,
+
+            (KeyCode::Char('h'),    KeyModifiers::CONTROL)  => Key::Ctrlh,
+            (KeyCode::Char('v'),    KeyModifiers::CONTROL)  => Key::Ctrlv,
+            (KeyCode::Char('d'),    KeyModifiers::CONTROL)  => Key::Ctrld,
+            (KeyCode::Left,         KeyModifiers::CONTROL)  => Key::CtrlLeft,
+            (KeyCode::Right,        KeyModifiers::CONTROL)  => Key::CtrlRight,
+            /*(KeyCode::Char('s'),    KeyModifiers::ALT)      => Key::Alts,
             (KeyCode::Char('d'),    KeyModifiers::ALT)      => Key::Altd,
             (KeyCode::Char('h'),    KeyModifiers::ALT)      => Key::Alth,
             (KeyCode::Char('v'),    KeyModifiers::ALT)      => Key::Altv,
             (KeyCode::Char('o'),    KeyModifiers::ALT)      => Key::Alto,
             (KeyCode::Left,         KeyModifiers::ALT)      => Key::AltLeft,
-            (KeyCode::Right,        KeyModifiers::ALT)      => Key::AltRight,
+            (KeyCode::Right,        KeyModifiers::ALT)      => Key::AltRight,*/
 
 
             (KeyCode::Enter,        _)  => Key::Enter,
