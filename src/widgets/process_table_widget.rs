@@ -1,18 +1,13 @@
-use crossterm::style::style;
 use process_table::{ColumnOptions, ProcessTable, MemoryUnitOptions};
-use crate::components::process_table::{ProcessTableViews, ViewsOrientation, ProcessTableViewFocus};
+use crate::components::process_table::{ProcessTableViews, ViewsOrientation};
 
 use ratatui::{
-    layout::{Constraint::Fill, Layout},
+    layout::Layout,
     prelude::{Buffer, Constraint, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, StatefulWidget, TableState, Widget},
+    widgets::{Block, Borders, Paragraph, Cell, Row, Table, StatefulWidget, Widget},
 };
-
-use ratatui::widgets::Cell;
-use ratatui::widgets::Row;
-use ratatui::widgets::Table;
 
 pub struct ProcessTableWidget<'a> {
     process_table: &'a ProcessTable,
@@ -54,15 +49,14 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                     Constraint::Length(1), // Border bottom
                 ]).split(view_chunks[view_index]);
 
-                // Get visual row selection, if none, then table is empty, return.
-                let Some(visual_row_selection) = view
+                // Get visual_row_selection, if None, set var to 0.
+                let visual_row_selection = view
                     .table_state()
                     .row_selection()
-                    .selection() else {
-                        // Bug here, header won't get drawn.
-                        return
-                };
+                    .selection()
+                    .unwrap_or_default();
 
+                // Update scroll state
                 view
                     .mut_table_state()
                     .mut_row_scroll()
@@ -84,13 +78,11 @@ impl StatefulWidget for ProcessTableWidget<'_> {
             ]).split(view_chunks[view_index]);
 
             // Get visual row selection, if none, then table is empty, return.
-            let Some(visual_row_selection) = view
+            let visual_row_selection = view
                 .table_state()
                 .row_selection()
-                .selection() else {
-                    // Bug here, header won't get drawn.
-                    return
-            };
+                .selection()
+                .unwrap_or_default();
 
             // Create visible rows iterator with sort & filter applied
             let row_sort = view
@@ -122,7 +114,6 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                 .take(row_chunks[2].height as usize)
                 .map(|(visible_index, process_table_row)| {
                     let mut cells: Vec<Cell> = Vec::new();
-
 
                     for (column_index, column_config) in view.table_state().columns().columns().enumerate() {
                         let cell = match column_config {
@@ -162,14 +153,13 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                             }
                         };
 
-                        let style = if let Some(column_selection) = column_selection {
-                            if column_selection == column_index {
-                                Style::default().fg(Color::Black).bg(Color::Cyan)
-                            } else {
+                        let style = match column_selection {
+                            Some(selection) if selection == column_index => {
                                 Style::default()
+                                    .fg(Color::Black)
+                                    .bg(Color::Cyan)
                             }
-                        } else {
-                            Style::default()
+                            _ => Style::default()
                         };
 
                         cells.push(cell.style(style))
@@ -184,38 +174,38 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                     Row::new(cells).style(style)
                 }).collect::<Vec<_>>();
 
-            // For now just a percent
-            let col_count = view.table_state().columns().columns().count();
-            
-            let col_widths = if col_count > 0 {100 / col_count} else {0};
-
-            let col_widths: Vec<Constraint> = view
+            let columns: Vec<_> = view
                 .table_state()
                 .columns()
                 .columns()
-                .map(|_| Constraint::Percentage(col_widths as u16))
                 .collect();
-            
-            let header = view
-                .table_state()
-                .columns()
-                .columns()
+
+            let col_width = if columns.is_empty() {
+                0
+            } else {
+                100 / columns.len()
+            };
+
+            let col_widths = vec![Constraint::Percentage(col_width as u16); columns.len()];
+
+            let header = columns
+                .iter()
                 .enumerate()
                 .map(|(col_idx, col)| {
-                    let style = if let Some(column_selection) = column_selection {
-                        if column_selection == col_idx {
-                            Style::default().fg(Color::Black).bg(Color::Cyan)
-                        } else {
+                    let style = match column_selection {
+                        Some(selection) if selection == col_idx => {
                             Style::default()
+                                .fg(Color::Black)
+                                .bg(Color::Cyan)
                         }
-                    } else {
-                        Style::default()
+                        _ => Style::default()
                     };
-                    
-                    Cell::new(col.as_str()).style(style)
-                }).collect::<Row>().style(Style::default().fg(Color::Black).bg(Color::LightBlue));
 
-            // This is kind of a hack
+                    Cell::new(col.as_str()).style(style)
+                })
+                .collect::<Row>()
+                .style(Style::default().fg(Color::Black).bg(Color::LightBlue));
+
             let border_style = if view_index == state.views_selection() {
                 Style::default().fg(Color::LightBlue)
             } else {
@@ -231,10 +221,8 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                     .border_style(border_style)
                 );
 
-
-            //StatefulWidget::render(table_widget, view_chunks[view_index], buf, &mut TableState::default());
+            // Render table
             Widget::render(table_widget, view_chunks[view_index], buf);
-                //table_widget.render(view_chunks[view_index], buf, &mut TableState::default());
             
             let mut lines = vec![];
             let filte_err_span = if let Some(err_msg) = view.filter_err_msg() {
@@ -261,7 +249,9 @@ impl StatefulWidget for ProcessTableWidget<'_> {
                     .style(Style::default().fg(Color::LightBlue))
                 );
             
+            // Render filter
             filter_widget.render(filter_chunks[1], buf);
         }
     }
 }
+
