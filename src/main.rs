@@ -6,6 +6,7 @@ use process_monitor::adapters::crossterm::input::Key;
 use process_monitor::services::config_worker::{ConfigCallerMessage, ConfigWorker, ConfigWorkerMessage};
 use process_monitor::services::sysinfo_worker::{SysinfoWorker, CallerMessage, WorkerMessage};
 use process_monitor::terminal::{restore_terminal, setup_terminal};
+use serde::de::Error;
 
 // std library import
 use std::sync::mpsc::TryRecvError;
@@ -36,8 +37,8 @@ fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow!(e))?;
 
     // Check message for error
-    if matches!(msg, ConfigWorkerMessage::Error(_e)) {
-        return Err(anyhow!("Config worker message (fix this error reporting)")).into();
+    if matches!(&msg, ConfigWorkerMessage::Error(_e)) {
+        return Err(anyhow!("{msg}"));
     }
     // Setup config worker thread::END
 
@@ -58,9 +59,18 @@ fn main() -> anyhow::Result<()> {
         _ => return Err(anyhow!("Unexpected message"))
     };
 
-    let app_config: AppConfig = toml::from_str(
+    let app_config: AppConfig = match serialized_config {
+            Some(cfg) => {
+                toml::from_str(&cfg).unwrap_or_default()
+            }
+            None => {
+                AppConfig::default()
+            }
+    };
+
+   /* toml::from_str(
         &serialized_config
-    ).unwrap_or_default();
+    ).unwrap_or_default();*/
     // Setup AppConfig::END
 
     // Setup App::BEGIN

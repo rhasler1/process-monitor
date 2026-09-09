@@ -1,6 +1,6 @@
 // Crossterm event (adapt)=> application input
 use crossterm::event::{
-    KeyCode, KeyEvent, KeyModifiers, ModifierKeyCode
+    KeyCode, KeyEvent, KeyModifiers
 };
 
 #[derive(Clone,Copy,PartialEq,Eq)]
@@ -18,22 +18,14 @@ pub enum Key {
     PageUp,
     PageDown,
     
-    /*Alto,
-    Alts,
-    Altd,
-    Alth,
-    Altv,
-    AltLeft,
-    AltRight,*/
-
     Ctrlc,
     Ctrlx,
     Ctrls,
     Ctrlh,
     Ctrlv,
     Ctrld,
-    CtrlLeft,
-    CtrlRight,
+    Ctrlp,
+    Ctrln,
 
     Unknown
 }
@@ -44,20 +36,11 @@ impl From<KeyEvent> for Key {
             (KeyCode::Char('c'),    KeyModifiers::CONTROL)  => Key::Ctrlc,
             (KeyCode::Char('x'),    KeyModifiers::CONTROL)  => Key::Ctrlx,
             (KeyCode::Char('s'),    KeyModifiers::CONTROL)  => Key::Ctrls,
-
             (KeyCode::Char('h'),    KeyModifiers::CONTROL)  => Key::Ctrlh,
             (KeyCode::Char('v'),    KeyModifiers::CONTROL)  => Key::Ctrlv,
             (KeyCode::Char('d'),    KeyModifiers::CONTROL)  => Key::Ctrld,
-            (KeyCode::Left,         KeyModifiers::CONTROL)  => Key::CtrlLeft,
-            (KeyCode::Right,        KeyModifiers::CONTROL)  => Key::CtrlRight,
-            /*(KeyCode::Char('s'),    KeyModifiers::ALT)      => Key::Alts,
-            (KeyCode::Char('d'),    KeyModifiers::ALT)      => Key::Altd,
-            (KeyCode::Char('h'),    KeyModifiers::ALT)      => Key::Alth,
-            (KeyCode::Char('v'),    KeyModifiers::ALT)      => Key::Altv,
-            (KeyCode::Char('o'),    KeyModifiers::ALT)      => Key::Alto,
-            (KeyCode::Left,         KeyModifiers::ALT)      => Key::AltLeft,
-            (KeyCode::Right,        KeyModifiers::ALT)      => Key::AltRight,*/
-
+            (KeyCode::Char('p'),    KeyModifiers::CONTROL)  => Key::Ctrlp,
+            (KeyCode::Char('n'),    KeyModifiers::CONTROL)  => Key::Ctrln,
 
             (KeyCode::Enter,        _)  => Key::Enter,
             (KeyCode::Esc,          _)  => Key::Esc,
