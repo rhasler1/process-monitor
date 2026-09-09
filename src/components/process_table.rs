@@ -1,7 +1,4 @@
-use log::debug;
-
 mod view;
-use std::time::Duration;
 
 pub use view::{
     ProcessTableViewFocus,
@@ -12,7 +9,11 @@ pub use view::{
 };
 
 use process_table::{
-    ColumnOptions, ColumnsConfig, Columns, Process, ProcessTable, RowSort, MemoryUnitOptions
+    ColumnOptions,
+    Process,
+    ProcessTable,
+    RowSort,
+    MemoryUnitOptions
 };
 
 use crate::components::Event;
@@ -20,7 +21,8 @@ use crate::adapters::crossterm::input::Key;
 use crate::config::AppConfig;
 use crate::domain::process::model::ProcessSnapShot;
 
-use anyhow::{anyhow, Result};
+use log::{debug, error};
+use anyhow::Result;
 
 pub struct ProcessTableComponent {
     table: ProcessTable,
@@ -50,23 +52,22 @@ impl ProcessTableComponent {
             config.refresh_rate_config().interval()
         )?;
 
-        let mut views = if let Some(views_config) = config.tables_views_config() {
-            ProcessTableViews::try_from(views_config)?
-        } else {
-            ProcessTableViews::default()
+        let mut views = match config.tables_views_config() {
+            Some(views_config) => ProcessTableViews::try_from(views_config)?,
+            None => ProcessTableViews::default()
         };
 
-        // Update row selection
-        let visible_rows_upper_bound = table.count_visible_rows(
-            views.active_view().table_state().row_sort(),
-            views.active_view().table_state().filter_ast()
-        );
+        for view in views.mut_views() {
+            let visible_rows_upper_bound = table.count_visible_rows(
+                view.table_state().row_sort(),
+                view.table_state().filter_ast()
+            );
 
-        views
-            .mut_active_view()
-            .mut_table_state()
-            .mut_row_selection()
-            .update_selection(visible_rows_upper_bound);
+            view
+                .mut_table_state()
+                .mut_row_selection()
+                .update_selection(visible_rows_upper_bound);
+        }
 
         Ok(Self {
             table,
@@ -121,7 +122,7 @@ impl Event for ProcessTableComponent {
             /* Events that operate on views */
             
             (Key::Ctrls, _) => {
-                debug!("Got Alts");
+                debug!("Got Ctrls");
                 self.views
                     .create_new_view_from_active();
             }
@@ -143,12 +144,12 @@ impl Event for ProcessTableComponent {
                     .set_to_split_vertical();
             }
 
-            (Key::CtrlLeft, _) => {
+            (Key::Ctrlp, _) => {
                 self.views
                     .dec_selection();
             }
 
-            (Key::CtrlRight, _) => {
+            (Key::Ctrln, _) => {
                 self.views
                     .inc_selection();
             }
@@ -410,6 +411,7 @@ impl Event for ProcessTableComponent {
                     .mut_filter_string()
                     .insert_ascii_ch(c) {
                         Err(e) => {
+                            error!("error: {e}");
                             self.views
                                 .mut_active_view()
                                 .set_filter_err_msg(&e.to_string());
@@ -418,11 +420,13 @@ impl Event for ProcessTableComponent {
                             .mut_active_view()
                             .set_filter_err_msg_to_none(),
                     }
+                let fs = self.views
+                    .active_view()
+                    .table_state()
+                    .filter_string()
+                    .as_str();
 
-                let fs = self.views().active_view().table_state().filter_string().as_str();
-                let sz = fs.len();
-                debug!("filter string: {fs}");
-                debug!("filter string size: {sz}");
+                debug!("filter string after insert: {fs}");
 
                 match self.views
                     .mut_active_view()
@@ -518,4 +522,7 @@ impl Event for ProcessTableComponent {
     }
 }
 
+mod tests {
+    use super::*;
 
+}

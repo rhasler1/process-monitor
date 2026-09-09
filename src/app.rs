@@ -48,7 +48,7 @@ pub struct App {
 }
 
 impl App {
-    // If fails to build with argued config, log & build with default
+    // If fails to build with argued config, log & build with default AppConfig
     pub fn new_with_config(config: AppConfig) -> Result<Self> {
         let process_snapshot = ProcessSnapShot::default();
 

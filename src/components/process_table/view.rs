@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Result};
-
 use process_table::{ProcessTableState, ProcessTableStateConfig};
 
 use serde::{Deserialize, Serialize};
+use anyhow::{anyhow, Result};
+use log::debug;
 
 #[derive(Debug, Default, Clone)]
 pub enum ProcessTableViewFocus {
@@ -73,11 +73,20 @@ impl TryFrom<&ProcessTableViewConfig> for ProcessTableView {
 
 impl ProcessTableView {
     pub fn new_from_existing(&self) -> Self {
-        Self {
+        let new_self = Self {
             table_state:    self.table_state.clone(),
             filter_err_msg: self.filter_err_msg.clone(),
             focus:          self.focus.clone()
-        }
+        };
+
+        let new_self_filter_cap = new_self.table_state().filter_string().capacity();
+        let new_self_filter_len = new_self.table_state().filter_string().len();
+        let new_self_cursor = new_self.table_state().filter_string().cursor();
+        
+        debug!("new view filter string cap = {new_self_filter_cap}");
+        debug!("new view filter len = {new_self_filter_len}");
+        debug!("new view cursor = {new_self_cursor}");        
+        new_self
     }
 
     pub fn table_state(&self) -> &ProcessTableState {
@@ -205,7 +214,7 @@ impl Default for ProcessTableViews {
 }
 
 impl ProcessTableViews {
-    const DEFAULT_CAPACITY: usize = 2;
+    const DEFAULT_CAPACITY: usize = 8;
 
     pub fn create_new_view_from_active(&mut self) {
         if self.views.len() == self.capacity {
