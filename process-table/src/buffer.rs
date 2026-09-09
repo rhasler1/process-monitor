@@ -39,7 +39,7 @@ impl AsciiString {
             return Err(BufError::NonAsciiInsertCh(ch))
         }
 
-        if self.buffer.len() < self.buffer.capacity() {
+        if self.buffer.len() < self.capacity() {
             self.buffer.insert(self.cursor, ch);
             self.cursor += 1;
         }
@@ -77,7 +77,7 @@ impl AsciiString {
             return Err(BufError::NonAsciiInsertStr(s.to_string()))
         }
 
-        if self.buffer.len() + s.len() < self.buffer.capacity() {
+        if self.buffer.len() + s.len() < self.capacity() {
             self.buffer.insert_str(self.cursor, s);
             self.cursor += s.len();
         }
@@ -126,6 +126,10 @@ impl AsciiString {
     
     pub fn cursor(&self) -> usize {
         self.cursor
+    }
+
+    pub fn len(&self) -> usize {
+        self.buffer.len()
     }
 
     pub fn capacity(&self) -> usize {
