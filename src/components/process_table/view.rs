@@ -221,7 +221,8 @@ impl ProcessTableViews {
             return
         }
 
-        self.views.push(
+        self.views.insert(
+            self.views_selection,
             ProcessTableView::new_from_existing(self.active_view())
         );
     }
